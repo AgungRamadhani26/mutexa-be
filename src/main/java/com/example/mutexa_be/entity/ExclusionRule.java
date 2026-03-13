@@ -23,12 +23,14 @@ public class ExclusionRule {
    @GeneratedValue(strategy = GenerationType.UUID)
    private UUID id;
 
-   // Relasi terhadap rekening yang aturannya difokuskan (agar tidak tertukar dengan rekening lain)
+   // Relasi terhadap rekening yang aturannya difokuskan (agar tidak tertukar
+   // dengan rekening lain)
    @ManyToOne(fetch = FetchType.LAZY)
    @JoinColumn(name = "account_id", nullable = false)
    private BankAccount bankAccount;
 
-   // Tipe dari pengecualian apakah berbasis NAMA, NOMOR REKENING, atau KEYWORD pola tertentu
+   // Tipe dari pengecualian apakah berbasis NAMA, NOMOR REKENING, atau KEYWORD
+   // pola tertentu
    @Enumerated(EnumType.STRING)
    @Column(name = "rule_type", nullable = false)
    private RuleType ruleType;
