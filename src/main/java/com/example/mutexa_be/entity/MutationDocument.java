@@ -39,7 +39,8 @@ public class MutationDocument {
    @Column(name = "file_type", nullable = false)
    private DocumentType fileType;
 
-   // Status pemrosesan dari dokumen (UPLOADED, PARSING, NORMALIZING, SUCCESS, dsb.)
+   // Status pemrosesan dari dokumen (UPLOADED, PARSING, NORMALIZING, SUCCESS,
+   // dsb.)
    @Enumerated(EnumType.STRING)
    @Column(name = "status", nullable = false)
    private DocumentStatus status;

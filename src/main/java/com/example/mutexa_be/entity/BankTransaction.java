@@ -65,11 +65,13 @@ public class BankTransaction {
    @Column(name = "category", nullable = false)
    private TransactionCategory category;
 
-   // Bendera apakah transaksi ini dikecualikan (excluded) pada dashboard atau tidak
+   // Bendera apakah transaksi ini dikecualikan (excluded) pada dashboard atau
+   // tidak
    @Column(name = "is_excluded", nullable = false)
    private Boolean isExcluded = false;
 
-   // Kode hash yang tersusun dari (Tanggal+Nilai+Tipe+Desktripsi) untuk mencegah duplikasi simpan
+   // Kode hash yang tersusun dari (Tanggal+Nilai+Tipe+Desktripsi) untuk mencegah
+   // duplikasi simpan
    @Column(name = "duplicate_hash", unique = true, nullable = false)
    private String duplicateHash;
 
