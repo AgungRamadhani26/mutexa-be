@@ -18,29 +18,29 @@ import java.util.UUID;
 @Builder
 public class ExclusionRule {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+   @Id
+   @GeneratedValue(strategy = GenerationType.UUID)
+   private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
-    private BankAccount bankAccount;
+   @ManyToOne(fetch = FetchType.LAZY)
+   @JoinColumn(name = "account_id", nullable = false)
+   private BankAccount bankAccount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "rule_type", nullable = false)
-    private RuleType ruleType;
+   @Enumerated(EnumType.STRING)
+   @Column(name = "rule_type", nullable = false)
+   private RuleType ruleType;
 
-    @Column(name = "pattern", nullable = false)
-    private String pattern;
+   @Column(name = "pattern", nullable = false)
+   private String pattern;
 
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive = true;
+   @Column(name = "is_active", nullable = false)
+   private Boolean isActive = true;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+   @CreationTimestamp
+   @Column(name = "created_at", updatable = false)
+   private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+   @UpdateTimestamp
+   @Column(name = "updated_at")
+   private LocalDateTime updatedAt;
 }

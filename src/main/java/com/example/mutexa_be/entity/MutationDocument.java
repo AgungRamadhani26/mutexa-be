@@ -20,42 +20,42 @@ import java.util.UUID;
 @Builder
 public class MutationDocument {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+   @Id
+   @GeneratedValue(strategy = GenerationType.UUID)
+   private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
-    private BankAccount bankAccount;
+   @ManyToOne(fetch = FetchType.LAZY)
+   @JoinColumn(name = "account_id", nullable = false)
+   private BankAccount bankAccount;
 
-    @Column(name = "file_name", nullable = false)
-    private String fileName;
+   @Column(name = "file_name", nullable = false)
+   private String fileName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "file_type", nullable = false)
-    private DocumentType fileType;
+   @Enumerated(EnumType.STRING)
+   @Column(name = "file_type", nullable = false)
+   private DocumentType fileType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private DocumentStatus status;
+   @Enumerated(EnumType.STRING)
+   @Column(name = "status", nullable = false)
+   private DocumentStatus status;
 
-    @Column(name = "period_start")
-    private LocalDate periodStart;
+   @Column(name = "period_start")
+   private LocalDate periodStart;
 
-    @Column(name = "period_end")
-    private LocalDate periodEnd;
+   @Column(name = "period_end")
+   private LocalDate periodEnd;
 
-    @Column(name = "error_message", columnDefinition = "TEXT")
-    private String errorMessage;
+   @Column(name = "error_message", columnDefinition = "TEXT")
+   private String errorMessage;
 
-    @Column(name = "file_path", nullable = false)
-    private String filePath;
+   @Column(name = "file_path", nullable = false)
+   private String filePath;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+   @CreationTimestamp
+   @Column(name = "created_at", updatable = false)
+   private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+   @UpdateTimestamp
+   @Column(name = "updated_at")
+   private LocalDateTime updatedAt;
 }
