@@ -22,8 +22,8 @@ public class BankTransaction {
 
    // ID Unik setiap baris transaksi yang tercatat
    @Id
-   @GeneratedValue(strategy = GenerationType.UUID)
-   private UUID id;
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long id;
 
    // Relasi ke dokumen mutasi yang merupakan sumber dari line item transaksi ini
    @ManyToOne(fetch = FetchType.LAZY)

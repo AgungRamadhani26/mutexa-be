@@ -19,8 +19,8 @@ public class BankAccount {
 
    // ID unik utama untuk rekening bank
    @Id
-   @GeneratedValue(strategy = GenerationType.UUID)
-   private UUID id;
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long id;
 
    // Nomor rekening yang wajib diisi dan bersifat unik di database
    @Column(name = "account_number", nullable = false, unique = true)
