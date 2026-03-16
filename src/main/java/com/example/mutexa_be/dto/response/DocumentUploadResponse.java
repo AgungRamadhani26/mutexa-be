@@ -4,12 +4,10 @@ import com.example.mutexa_be.entity.MutationDocument;
 import lombok.Builder;
 import lombok.Data;
 
-import java.util.UUID;
-
 @Data
 @Builder
 public class DocumentUploadResponse {
-   private UUID documentId;
+   private Long documentId;
    private String fileName;
    private String status;
    private String fileType;

@@ -22,8 +22,8 @@ public class MutationDocument {
 
    // ID Unik dokumen mutasi, di-generate secara otomatis
    @Id
-   @GeneratedValue(strategy = GenerationType.UUID)
-   private UUID id;
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long id;
 
    // Relasi Many-To-One terhadap rekening yang dimiliki dokumen ini
    @ManyToOne(fetch = FetchType.LAZY)

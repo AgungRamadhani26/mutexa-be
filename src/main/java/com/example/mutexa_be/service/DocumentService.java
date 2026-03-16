@@ -2,11 +2,14 @@ package com.example.mutexa_be.service;
 
 import com.example.mutexa_be.dto.request.UploadDocumentRequest;
 import com.example.mutexa_be.entity.BankAccount;
+import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.entity.enums.DocumentStatus;
 import com.example.mutexa_be.entity.enums.DocumentType;
 import com.example.mutexa_be.repository.BankAccountRepository;
+import com.example.mutexa_be.repository.BankTransactionRepository;
 import com.example.mutexa_be.repository.MutationDocumentRepository;
+import com.example.mutexa_be.service.parser.BriPdfParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -21,6 +24,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.ArrayList;
 
 @Slf4j
 @Service
@@ -29,6 +34,8 @@ public class DocumentService {
 
    private final MutationDocumentRepository mutationDocumentRepository;
    private final BankAccountRepository bankAccountRepository;
+   private final BankTransactionRepository bankTransactionRepository;
+   private final BriPdfParserService briPdfParserService;
 
    // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
    // membebani RAM
@@ -69,18 +76,68 @@ public class DocumentService {
          DocumentType detectedType = detectDocumentType(filePath.toFile(), file.getContentType(),
                file.getOriginalFilename());
 
-         // 4. Rekam ke Database dengan Status UPLOADED
+         // 4. Rekam ke Database dengan status awal PARSING (langsung kita proses)
          MutationDocument document = MutationDocument.builder()
                .bankAccount(account)
                .fileName(file.getOriginalFilename())
                .fileType(detectedType)
-               .status(DocumentStatus.UPLOADED)
+               .status(DocumentStatus.PARSING)
                .filePath(filePath.toString())
-               .periodStart(LocalDate.now()) // Default dummy (Nanti akan di-update oleh parser saat PDF di parse)
+               .periodStart(LocalDate.now()) // Default dummy, bisa di-update nanti jika kita parse dari PDF header
                .periodEnd(LocalDate.now())
                .build();
 
-         return mutationDocumentRepository.save(document);
+         document = mutationDocumentRepository.save(document);
+
+         // 5. PANGGIL PARSER SESUAI TIPE FILE & BANK SEKARANG JUGA!
+         if (detectedType == DocumentType.PDF_DIGITAL) {
+            if (request.getBankName().equalsIgnoreCase("BRI")) {
+               try {
+                  log.info("Memulai parsing PDF BRI...");
+                  // Gunakan BriPdfParserService yang baru saja kita buat tadi
+                  List<BankTransaction> extractedTxs = briPdfParserService.parse(document, filePath.toString());
+
+                  // Filter anti-duplikasi sebelum di-simpan (Idempotensi)
+                  List<BankTransaction> txToSave = new ArrayList<>();
+                  int duplicateCount = 0;
+                  for (BankTransaction tx : extractedTxs) {
+                     if (bankTransactionRepository.existsByDuplicateHash(tx.getDuplicateHash())) {
+                        duplicateCount++;
+                     } else {
+                        txToSave.add(tx);
+                     }
+                  }
+
+                  // Simpan ke Tabel BankTransaction
+                  bankTransactionRepository.saveAll(txToSave);
+
+                  // Perbarui status dokumen
+                  document.setStatus(DocumentStatus.SUCCESS);
+                  mutationDocumentRepository.save(document);
+
+                  log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
+
+               } catch (Exception e) {
+                  log.error("Gagal saat mencoba mem-parse PDF: {}", e.getMessage());
+                  document.setStatus(DocumentStatus.FAILED);
+                  document.setErrorMessage(e.getMessage());
+                  mutationDocumentRepository.save(document);
+               }
+            } else {
+               // Untuk Bank Lain yang belum didukung parser digitalnya di aplikasi kita
+               log.warn("Bank {} belum ada Regex Parser PDF-nya. Ditandai FAILED.", request.getBankName());
+               document.setStatus(DocumentStatus.FAILED);
+               document.setErrorMessage("Parser PDF untuk bank " + request.getBankName() + " belum tersedia.");
+               mutationDocumentRepository.save(document);
+            }
+         } else {
+            // JIKA FILE ADALAH IMAGE_SCAN -> Di sini nanti letak integrasi OLLAMA
+            log.warn("Tipe Dokumen IMAGE_SCAN. Ini bakal diproses sama Ollama di Tahap 5 nanti!");
+            // Status biarkan UPLOADED / PARSING dulu, karena pengerjaan OCR Ollama masih
+            // pending
+         }
+
+         return document;
 
       } catch (IOException e) {
          log.error("Gagal saat menyimpan file: {}", e.getMessage(), e);
