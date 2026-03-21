@@ -24,7 +24,7 @@ Mengunggah file mutasi rekening (PDF, JPG, PNG). Sistem akan otomatis mendeteksi
 - `accountNumber` (Text) : Nomor rekening nasabah
 - `accountName` (Text) : Nama nasabah pemilik rekening
 
-**Contoh cURL:**
+**Contoh cURL (BRI - Teks PDF Digital):**
 Pastikan Anda mengubah path `@/path/to/your/file.pdf` dengan lokasi rill file di komputer Anda.
 
 ```bash
@@ -33,6 +33,17 @@ curl --location 'http://localhost:9091/api/documents/upload' \
 --form 'bankName="BRI"' \
 --form 'accountNumber="664301022530536"' \
 --form 'accountName="LISDRI SUSTIWI"'
+```
+
+**Contoh cURL (BCA - Scan/Image PDF untuk diproses via AI Ollama OCR):**
+Ubah nama file dan data dummy account di bawah sesuai dengan file BCA yang Anda miliki.
+
+```bash
+curl --location 'http://localhost:9091/api/documents/upload' \
+--form 'file=@"C:/Users/agung/Documents/PDP_BCA_Finance/MutexaApp/Novalino/NAMA_FILE_BCA_ANDA.pdf"' \
+--form 'bankName="BCA"' \
+--form 'accountNumber="1234567890"' \
+--form 'accountName="NAMA NASABAH BCA"'
 ```
 
 **Contoh Response Sukses (201 Created):**

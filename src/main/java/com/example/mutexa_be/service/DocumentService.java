@@ -10,6 +10,7 @@ import com.example.mutexa_be.repository.BankAccountRepository;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import com.example.mutexa_be.repository.MutationDocumentRepository;
 import com.example.mutexa_be.service.parser.BriPdfParserService;
+import com.example.mutexa_be.service.parser.BcaImageParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -36,6 +37,7 @@ public class DocumentService {
    private final BankAccountRepository bankAccountRepository;
    private final BankTransactionRepository bankTransactionRepository;
    private final BriPdfParserService briPdfParserService;
+   private final BcaImageParserService bcaImageParserService;
 
    // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
    // membebani RAM
@@ -130,11 +132,37 @@ public class DocumentService {
                document.setErrorMessage("Parser PDF untuk bank " + request.getBankName() + " belum tersedia.");
                mutationDocumentRepository.save(document);
             }
-         } else {
-            // JIKA FILE ADALAH IMAGE_SCAN -> Di sini nanti letak integrasi OLLAMA
-            log.warn("Tipe Dokumen IMAGE_SCAN. Ini bakal diproses sama Ollama di Tahap 5 nanti!");
-            // Status biarkan UPLOADED / PARSING dulu, karena pengerjaan OCR Ollama masih
-            // pending
+         } else if (detectedType == DocumentType.IMAGE_SCAN) {
+            // JIKA FILE ADALAH IMAGE_SCAN -> Mulai proses dengan Tesseract OCR
+            log.info("Tipe Dokumen IMAGE_SCAN terdeteksi. Mengecek dukungan OCR Bank...");
+
+            if (request.getBankName().equalsIgnoreCase("BCA")) {
+               try {
+                  log.info("Merutekan PDF Scanner ke Parser BCA (Tesseract OCR)...");
+                  List<BankTransaction> extractedOcrTxs = bcaImageParserService.parseAndSave(document,
+                        filePath.toString());
+
+                  if (!extractedOcrTxs.isEmpty()) {
+                     document.setStatus(DocumentStatus.SUCCESS);
+                     mutationDocumentRepository.save(document);
+                  } else {
+                     document.setStatus(DocumentStatus.FAILED);
+                     document.setErrorMessage("Gagal menemukan transaksi melalui pemindaian Gambar Tesseract OCR BCA.");
+                     mutationDocumentRepository.save(document);
+                  }
+               } catch (Exception e) {
+                  log.error("Proses Tesseract OCR BCA Gagal Berjalan: {}", e.getMessage(), e);
+                  document.setStatus(DocumentStatus.FAILED);
+                  document.setErrorMessage("Proses Tesseract OCR Terhenti: " + e.getMessage());
+                  mutationDocumentRepository.save(document);
+               }
+            } else {
+               // Default fall-back untuk bank lain yang IMAGE_SCAN selain BCA
+               log.warn("Bank {} belum didukung untuk proses OCR Image Scan. Ditandai FAILED.", request.getBankName());
+               document.setStatus(DocumentStatus.FAILED);
+               document.setErrorMessage("Parser OCR Scanner untuk bank " + request.getBankName() + " belum tersedia.");
+               mutationDocumentRepository.save(document);
+            }
          }
 
          return document;
