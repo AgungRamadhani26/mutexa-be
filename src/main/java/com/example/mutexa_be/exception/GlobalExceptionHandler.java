@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
    @ExceptionHandler(MaxUploadSizeExceededException.class)
    public ResponseEntity<ApiResponse<Object>> handleMaxSizeException(MaxUploadSizeExceededException exc) {
       log.warn("MaxUploadSizeExceededException: {}", exc.getMessage());
-      return ResponseUtil.error(HttpStatus.PAYLOAD_TOO_LARGE, "File terlalu besar! Maksimal ukuran file adalah 10MB.");
+      return ResponseUtil.error(HttpStatus.PAYLOAD_TOO_LARGE, "File terlalu besar! Maksimal ukuran file adalah 50MB.");
    }
 
    @ExceptionHandler(Exception.class)
