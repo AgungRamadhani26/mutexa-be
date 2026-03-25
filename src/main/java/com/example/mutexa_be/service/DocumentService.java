@@ -10,6 +10,8 @@ import com.example.mutexa_be.repository.BankAccountRepository;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import com.example.mutexa_be.repository.MutationDocumentRepository;
 import com.example.mutexa_be.service.parser.bri.BriPdfParserService;
+import com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService;
+import com.example.mutexa_be.service.parser.uob.UobPdfParserService;
 import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,8 @@ public class DocumentService {
    private final BankAccountRepository bankAccountRepository;
    private final BankTransactionRepository bankTransactionRepository;
    private final BriPdfParserService briPdfParserService;
+   private final MandiriPdfParserService mandiriPdfParserService;
+   private final UobPdfParserService uobPdfParserService;
    private final BcaImageParserService bcaImageParserService;
 
    // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
@@ -105,7 +109,8 @@ public class DocumentService {
 
                   for (BankTransaction tx : extractedTxs) {
                      String hash = tx.getDuplicateHash();
-                     // Cek apakah sudah ada di Database (Mencegah upload file PDF yang persis sama 2 kali)
+                     // Cek apakah sudah ada di Database (Mencegah upload file PDF yang persis sama 2
+                     // kali)
                      if (bankTransactionRepository.existsByDuplicateHash(hash)) {
                         duplicateCount++;
                      } else {
@@ -123,7 +128,65 @@ public class DocumentService {
                   log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
 
                } catch (Exception e) {
-                  log.error("Gagal saat mencoba mem-parse PDF: {}", e.getMessage());
+                  log.error("Gagal saat mencoba mem-parse PDF BRI: {}", e.getMessage());
+                  document.setStatus(DocumentStatus.FAILED);
+                  document.setErrorMessage(e.getMessage());
+                  mutationDocumentRepository.save(document);
+               }
+            } else if (request.getBankName().equalsIgnoreCase("MANDIRI")) {
+               try {
+                  log.info("Memulai parsing PDF MANDIRI...");
+                  List<BankTransaction> extractedTxs = mandiriPdfParserService.parse(document, filePath.toString());
+
+                  List<BankTransaction> txToSave = new ArrayList<>();
+                  int duplicateCount = 0;
+
+                  for (BankTransaction tx : extractedTxs) {
+                     String hash = tx.getDuplicateHash();
+                     if (bankTransactionRepository.existsByDuplicateHash(hash)) {
+                        duplicateCount++;
+                     } else {
+                        txToSave.add(tx);
+                     }
+                  }
+
+                  bankTransactionRepository.saveAll(txToSave);
+                  document.setStatus(DocumentStatus.SUCCESS);
+                  mutationDocumentRepository.save(document);
+
+                  log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
+
+               } catch (Exception e) {
+                  log.error("Gagal saat mencoba mem-parse PDF MANDIRI: {}", e.getMessage());
+                  document.setStatus(DocumentStatus.FAILED);
+                  document.setErrorMessage(e.getMessage());
+                  mutationDocumentRepository.save(document);
+               }
+            } else if (request.getBankName().equalsIgnoreCase("UOB")) {
+               try {
+                  log.info("Memulai parsing PDF UOB...");
+                  List<BankTransaction> extractedTxs = uobPdfParserService.parse(document, filePath.toString());
+
+                  List<BankTransaction> txToSave = new ArrayList<>();
+                  int duplicateCount = 0;
+
+                  for (BankTransaction tx : extractedTxs) {
+                     String hash = tx.getDuplicateHash();
+                     if (bankTransactionRepository.existsByDuplicateHash(hash)) {
+                        duplicateCount++;
+                     } else {
+                        txToSave.add(tx);
+                     }
+                  }
+
+                  bankTransactionRepository.saveAll(txToSave);
+                  document.setStatus(DocumentStatus.SUCCESS);
+                  mutationDocumentRepository.save(document);
+
+                  log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
+
+               } catch (Exception e) {
+                  log.error("Gagal saat mencoba mem-parse PDF UOB: {}", e.getMessage());
                   document.setStatus(DocumentStatus.FAILED);
                   document.setErrorMessage(e.getMessage());
                   mutationDocumentRepository.save(document);

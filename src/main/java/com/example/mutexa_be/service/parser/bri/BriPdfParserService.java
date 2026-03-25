@@ -123,7 +123,21 @@ public class BriPdfParserService implements PdfParserService {
             // MASUK SINI JIKA: Baris ini TIDAK DIAWALI TANGGAL.
             // Bisa jadi ini adalah "keterangan panjang bertipe multi-line" dari transaksi
             // baris sebelumnya
-            // Contoh barisnya: "8465752994 - Khintesa Nur Wibowo Mh"
+            
+            // CEGAH KEBOCORAN FOOTER: Jika kita menemui baris yang murni merupakan bagian bawah/footer PDF.
+            String lowerLine = line.toLowerCase();
+            if (lowerLine.contains("saldo awal") || lowerLine.contains("opening balance") 
+                || lowerLine.contains("total transaksi") || lowerLine.contains("terbilang")
+                || lowerLine.contains("biaya materai") || lowerLine.contains("apabila terdapat perbedaan")
+                || lowerLine.contains("salinan rekening koran") || lowerLine.startsWith("ibiz_")) {
+                
+                // Jika sedang membangun transaksi terakhir, selesaikan sekarang dan putus pembacaan baris ini
+                if (currentTxBuilder != null) {
+                   list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
+                   currentTxBuilder = null; // Matikan pembacaan karena sudah masuk wilayah Footer
+                }
+                continue; // Skip baris footer ini
+            }
 
             // Pastikan currentTxBuilder itu sedang berjalan/aktif.
             if (currentTxBuilder != null) {
