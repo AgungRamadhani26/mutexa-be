@@ -97,7 +97,8 @@ public class UobPdfParserService implements PdfParserService {
                || line.startsWith("similar characteristic with maximum")
                || line.startsWith("agreed between Bank and Customer") || line.startsWith("s regulated by LPS")
                || line.startsWith("Total Deposits") || line.startsWith("Note") || line.startsWith("IDR ")
-               || line.startsWith("Balances and details reflected") || line.contains("EGA TEKELINDO")) {
+               || line.startsWith("Balances and details reflected") || line.startsWith("Your deposit")
+               || line.startsWith("Information on the prevailing deposit")) {
             continue;
          }
 
@@ -105,11 +106,8 @@ public class UobPdfParserService implements PdfParserService {
          Matcher dateMatcher = STATEMENT_DATE_PATTERN.matcher(line);
          if (dateMatcher.matches()) {
 
-            // Kalau kita tadi lagi nyusun blok transaksi, tapi tiba-tiba ketemu tgl baru,
-            // berati transaksi sebelumnya udah "selesai/putus"
-            // (Walau harusnya sih ditutup oleh regex nominal di bawah, ini buat jaga jaga
-            // aja)
-            if (currentTxBuilder != null && !currentTxBuilder.saldoStr.isEmpty()) {
+            // Kalau transaksi sebelumnya udah punya saldo dsb, berarti bloknya selesai
+            if (currentTxBuilder != null && currentTxBuilder.saldoStr != null && !currentTxBuilder.saldoStr.isEmpty()) {
                list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
             }
 
@@ -131,32 +129,34 @@ public class UobPdfParserService implements PdfParserService {
             }
 
             // Cek penutup nominal saldo/debit/kredit
-            Matcher amountMatcher = AMOUNTS_PATTERN.matcher(line);
-            // Karena format angka UOB cukup umum (angka spasi angka), pastikan ia bukan
-            // nomor slip acak, biasanya minimal ada 0 spasi
-            if (amountMatcher.matches() && (line.contains(" 0 ") || line.startsWith("0 "))) {
-               String beforeNumbers = amountMatcher.group(1).trim();
-               if (!beforeNumbers.isEmpty()) {
-                  currentTxBuilder.rawDescription += " " + beforeNumbers;
+            // Hanya deteksi jika sebelumnya kita belum pernah nyatet nominal
+            // Karena kadang deskripsi transaksi kebetulan angka doang jadi numbur
+            if (currentTxBuilder.saldoStr != null && currentTxBuilder.saldoStr.isEmpty()) {
+               Matcher amountMatcher = AMOUNTS_PATTERN.matcher(line);
+               // Pastikan formatnya bener, minimal nol nya UOB di tengah
+               if (amountMatcher.matches() && (line.contains(" 0 ") || line.startsWith("0 "))) {
+                  String beforeNumbers = amountMatcher.group(1).trim();
+                  if (!beforeNumbers.isEmpty()) {
+                     currentTxBuilder.rawDescription += " " + beforeNumbers;
+                  }
+
+                  currentTxBuilder.depositStr = amountMatcher.group(2);
+                  currentTxBuilder.withdrawStr = amountMatcher.group(3);
+                  currentTxBuilder.saldoStr = amountMatcher.group(4);
+
+                  // JANGAN di-null-in, biarin aja nampung deskripsi sampe ketemu tanggal baru!
+                  continue;
                }
-
-               currentTxBuilder.depositStr = amountMatcher.group(2);
-               currentTxBuilder.withdrawStr = amountMatcher.group(3);
-               currentTxBuilder.saldoStr = amountMatcher.group(4);
-
-               // FINISH: 1 Blok transaksi komplit, kita masukkan list.
-               list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
-               currentTxBuilder = null;
-               continue;
             }
 
-            // Kalau bukan angka dan jam, dia murni Deskripsi / Keterangan Transfer
+            // Kalau bukan angka dan jam (atau sudah lewat baris angkanya),
+            // berarti murni Deskripsi / Keterangan Transfer sisanya yg nyampur
             currentTxBuilder.rawDescription += " " + line;
          }
       }
 
       // Jaga-jaga kalau ada transaksi menggantung di akhir
-      if (currentTxBuilder != null && !currentTxBuilder.saldoStr.isEmpty()) {
+      if (currentTxBuilder != null && currentTxBuilder.saldoStr != null && !currentTxBuilder.saldoStr.isEmpty()) {
          list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
       }
 

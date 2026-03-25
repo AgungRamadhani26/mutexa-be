@@ -87,8 +87,7 @@ public class MandiriPdfParserService implements PdfParserService {
                || line.startsWith("Account No.") || line.startsWith("Period ") || line.startsWith("Opening Balance")
                || line.startsWith("Closing Balance") || line.contains("Page ")
                || line.contains("koprabymandiri.com") || line.contains("CreditReference No")
-               || line.startsWith("IDR") || line.contains("1820079") || line.equals("AHSA JAYA METALINDO")
-               || line.contains("For further questions")) {
+               || line.startsWith("IDR") || line.contains("For further questions")) {
             continue;
          }
 

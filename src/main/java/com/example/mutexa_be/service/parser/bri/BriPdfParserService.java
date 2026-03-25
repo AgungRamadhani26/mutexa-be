@@ -123,20 +123,22 @@ public class BriPdfParserService implements PdfParserService {
             // MASUK SINI JIKA: Baris ini TIDAK DIAWALI TANGGAL.
             // Bisa jadi ini adalah "keterangan panjang bertipe multi-line" dari transaksi
             // baris sebelumnya
-            
-            // CEGAH KEBOCORAN FOOTER: Jika kita menemui baris yang murni merupakan bagian bawah/footer PDF.
+
+            // CEGAH KEBOCORAN FOOTER: Jika kita menemui baris yang murni merupakan bagian
+            // bawah/footer PDF.
             String lowerLine = line.toLowerCase();
-            if (lowerLine.contains("saldo awal") || lowerLine.contains("opening balance") 
-                || lowerLine.contains("total transaksi") || lowerLine.contains("terbilang")
-                || lowerLine.contains("biaya materai") || lowerLine.contains("apabila terdapat perbedaan")
-                || lowerLine.contains("salinan rekening koran") || lowerLine.startsWith("ibiz_")) {
-                
-                // Jika sedang membangun transaksi terakhir, selesaikan sekarang dan putus pembacaan baris ini
-                if (currentTxBuilder != null) {
-                   list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
-                   currentTxBuilder = null; // Matikan pembacaan karena sudah masuk wilayah Footer
-                }
-                continue; // Skip baris footer ini
+            if (lowerLine.contains("saldo awal") || lowerLine.contains("opening balance")
+                  || lowerLine.contains("total transaksi") || lowerLine.contains("terbilang")
+                  || lowerLine.contains("biaya materai") || lowerLine.contains("apabila terdapat perbedaan")
+                  || lowerLine.contains("salinan rekening koran")) {
+
+               // Jika sedang membangun transaksi terakhir, selesaikan sekarang dan putus
+               // pembacaan baris ini
+               if (currentTxBuilder != null) {
+                  list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
+                  currentTxBuilder = null; // Matikan pembacaan karena sudah masuk wilayah Footer
+               }
+               continue; // Skip baris footer ini
             }
 
             // Pastikan currentTxBuilder itu sedang berjalan/aktif.
@@ -199,7 +201,8 @@ public class BriPdfParserService implements PdfParserService {
     * Menyulap object Kerangka Sementara (String) menjadi Entity Database aseli
     * (BigDecimal dan LocalDate)
     */
-   private BankTransaction finalizeTransaction(BankTransactionBuilder builder, MutationDocument doc, java.util.Map<String, Integer> hashCounters) {
+   private BankTransaction finalizeTransaction(BankTransactionBuilder builder, MutationDocument doc,
+         java.util.Map<String, Integer> hashCounters) {
 
       // Mengubah string nilai ("49,370.00") menjadi angka murni BigDecimal (49370.00)
       BigDecimal valDebit = parseRupiahStr(builder.debitStr);
@@ -228,12 +231,14 @@ public class BriPdfParserService implements PdfParserService {
 
       // Base string pembentuk Hash anti duplikasi
       String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
-      
-      // Ambil urutan ke-berapa transaksi dengan hash persis sama ini muncul di dokumen ini
+
+      // Ambil urutan ke-berapa transaksi dengan hash persis sama ini muncul di
+      // dokumen ini
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
       hashCounters.put(baseHashStr, occurrenceIndex + 1);
-      
-      // Hash ditambahkan dengan angka occurrence agar transaksi identik dalam 1 dokumen punya hash unik
+
+      // Hash ditambahkan dengan angka occurrence agar transaksi identik dalam 1
+      // dokumen punya hash unik
       String hashStr = baseHashStr + "_" + occurrenceIndex;
       String finalHash = generateMd5Hash(hashStr);
 
