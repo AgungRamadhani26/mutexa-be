@@ -120,6 +120,31 @@ public class UobPdfParserService implements PdfParserService {
             continue; // lanjut ke baris berikutnya
          }
 
+         // CEGAH KEBOCORAN FOOTER/HEADER HALAMAN
+         // Jika parser menabrak teks struktur halaman, segera kunci transaksi terakhir
+         // agar teks tersebut tidak masuk jadi deskripsi
+         String upperLine = line.toUpperCase();
+         if (upperLine.startsWith("COMPANY") || upperLine.startsWith("AVAILABLE BALANCE")
+               || upperLine.startsWith("LEDGER BALANCE") || upperLine.startsWith("CURRENT ACCOUNT")
+               || upperLine.startsWith("ACCOUNT BRANCH") || upperLine.startsWith("OVERDRAFT FACILITY")
+               || upperLine.startsWith("PRIMARY ACCOUNT") || upperLine.startsWith("ACCOUNT CURRENCY")
+               || upperLine.startsWith("ACCOUNT NATURE") || upperLine.startsWith("ALLOCATED AMOUNT")
+               || upperLine.startsWith("EARMARK") || upperLine.startsWith("WITHDRAWAL AND DEPOSIT")
+               || line.matches("^[\\d,\\.]+\\s+[\\d,\\.]+$") // Filter 2 nominal total (misal: 64,000,000 55,733,821)
+               || line.matches("^Account\\s+\\d+.*$") // Filter "Account 4183011566 ..."
+               || line.matches("^IDR\\s+\\d+.*$") // Filter "IDR 4183011566"
+               || line.matches("^\\d{2}/\\d{2}/\\d{4}\\s+-\\s+\\d{2}/\\d{2}/\\d{4}$")) // Filter "01/01/2026 -
+                                                                                       // 31/01/2026"
+         {
+            if (currentTxBuilder != null) {
+               if (currentTxBuilder.saldoStr != null && !currentTxBuilder.saldoStr.isEmpty()) {
+                  list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
+               }
+               currentTxBuilder = null; // Matikan pembacaan agar tak merekam lanjutan baris
+            }
+            continue;
+         }
+
          // 2. Kumpulkan isi transaksi
          if (currentTxBuilder != null) {
 
