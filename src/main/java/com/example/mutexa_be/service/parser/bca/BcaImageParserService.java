@@ -1,4 +1,4 @@
-package com.example.mutexa_be.service.parser;
+package com.example.mutexa_be.service.parser.bca;
 
 import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;

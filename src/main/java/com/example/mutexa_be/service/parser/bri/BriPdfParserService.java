@@ -1,5 +1,6 @@
-package com.example.mutexa_be.service.parser;
+package com.example.mutexa_be.service.parser.bri;
 
+import com.example.mutexa_be.service.parser.PdfParserService;
 import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.entity.enums.MutationType;
