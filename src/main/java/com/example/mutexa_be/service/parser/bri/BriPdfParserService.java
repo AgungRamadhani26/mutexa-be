@@ -72,6 +72,7 @@ public class BriPdfParserService implements PdfParserService {
 
    private List<BankTransaction> extractLinesAndBuildTransactions(MutationDocument document, String entireText) {
       List<BankTransaction> list = new ArrayList<>();
+      java.util.Map<String, Integer> hashCounters = new java.util.HashMap<>();
 
       // Memecah teks besar PDFBox menjadi per satu baris yang berurutan
       String[] lines = entireText.split("\\r?\\n");
@@ -95,7 +96,7 @@ public class BriPdfParserService implements PdfParserService {
             // baris transaksi baru),
             // maka simpan (flush) transaksi sebelumnya ke dalam List akhir.
             if (currentTxBuilder != null) {
-               list.add(finalizeTransaction(currentTxBuilder, document));
+               list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
             }
 
             String dateStr = matcher.group(1); // misal: "01/12/25"
@@ -135,7 +136,7 @@ public class BriPdfParserService implements PdfParserService {
 
       // Jangan lupakan transaksi terakhir dari barisan tersebut, masukkan!
       if (currentTxBuilder != null) {
-         list.add(finalizeTransaction(currentTxBuilder, document));
+         list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
       }
 
       return list;
@@ -184,7 +185,7 @@ public class BriPdfParserService implements PdfParserService {
     * Menyulap object Kerangka Sementara (String) menjadi Entity Database aseli
     * (BigDecimal dan LocalDate)
     */
-   private BankTransaction finalizeTransaction(BankTransactionBuilder builder, MutationDocument doc) {
+   private BankTransaction finalizeTransaction(BankTransactionBuilder builder, MutationDocument doc, java.util.Map<String, Integer> hashCounters) {
 
       // Mengubah string nilai ("49,370.00") menjadi angka murni BigDecimal (49370.00)
       BigDecimal valDebit = parseRupiahStr(builder.debitStr);
@@ -211,10 +212,15 @@ public class BriPdfParserService implements PdfParserService {
       // normal
       String normalizedDesc = builder.rawDescription.replaceAll("\\s+", " ");
 
-      // Generate ID / Hash anti duplikasi
-      // Agar jikapun user sengaja mengupload doc.pdf bulan Desember sebanyak lima
-      // kali, ia tidak akan tercatat 5x.
-      String hashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      // Base string pembentuk Hash anti duplikasi
+      String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      
+      // Ambil urutan ke-berapa transaksi dengan hash persis sama ini muncul di dokumen ini
+      int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
+      hashCounters.put(baseHashStr, occurrenceIndex + 1);
+      
+      // Hash ditambahkan dengan angka occurrence agar transaksi identik dalam 1 dokumen punya hash unik
+      String hashStr = baseHashStr + "_" + occurrenceIndex;
       String finalHash = generateMd5Hash(hashStr);
 
       // Buat objek entitas dan bungkus kembali...

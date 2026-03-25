@@ -99,11 +99,14 @@ public class DocumentService {
                   // Gunakan BriPdfParserService yang baru saja kita buat tadi
                   List<BankTransaction> extractedTxs = briPdfParserService.parse(document, filePath.toString());
 
-                  // Filter anti-duplikasi sebelum di-simpan (Idempotensi)
+                  // Filter anti-duplikasi sebelum di-simpan (Idempotensi vs Database saja)
                   List<BankTransaction> txToSave = new ArrayList<>();
                   int duplicateCount = 0;
+
                   for (BankTransaction tx : extractedTxs) {
-                     if (bankTransactionRepository.existsByDuplicateHash(tx.getDuplicateHash())) {
+                     String hash = tx.getDuplicateHash();
+                     // Cek apakah sudah ada di Database (Mencegah upload file PDF yang persis sama 2 kali)
+                     if (bankTransactionRepository.existsByDuplicateHash(hash)) {
                         duplicateCount++;
                      } else {
                         txToSave.add(tx);
