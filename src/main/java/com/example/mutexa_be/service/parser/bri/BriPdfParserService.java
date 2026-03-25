@@ -124,19 +124,24 @@ public class BriPdfParserService implements PdfParserService {
             // Bisa jadi ini adalah "keterangan panjang bertipe multi-line" dari transaksi
             // baris sebelumnya
 
-            // CEGAH KEBOCORAN FOOTER: Jika kita menemui baris yang murni merupakan bagian
-            // bawah/footer PDF.
+            // CEGAH KEBOCORAN FOOTER & HEADER HALAMAN (Page Break):
             String lowerLine = line.toLowerCase();
             if (lowerLine.contains("saldo awal") || lowerLine.contains("opening balance")
                   || lowerLine.contains("total transaksi") || lowerLine.contains("terbilang")
                   || lowerLine.contains("biaya materai") || lowerLine.contains("apabila terdapat perbedaan")
-                  || lowerLine.contains("salinan rekening koran")) {
+                  || lowerLine.contains("salinan rekening koran") || lowerLine.contains("ibiz_")
+                  || lowerLine.contains("created by") || lowerLine.contains("laporan transaksi finansial")
+                  || lowerLine.contains("statement of financial transaction") || lowerLine.contains("halaman ")
+                  || lowerLine.contains("page ") || lowerLine.contains("tanggal transaksi")
+                  || lowerLine.contains("uraian transaksi") || lowerLine.contains("transaction date")
+                  || lowerLine.contains("transaction description") || lowerLine.matches("^\\d{15,25}$")
+                  || lowerLine.matches("^\\d{2}/\\d{2}/\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}$")) {
 
                // Jika sedang membangun transaksi terakhir, selesaikan sekarang dan putus
                // pembacaan baris ini
                if (currentTxBuilder != null) {
                   list.add(finalizeTransaction(currentTxBuilder, document, hashCounters));
-                  currentTxBuilder = null; // Matikan pembacaan karena sudah masuk wilayah Footer
+                  currentTxBuilder = null; // Matikan pembacaan karena sudah masuk wilayah Footer/Header Halaman
                }
                continue; // Skip baris footer ini
             }
@@ -183,10 +188,21 @@ public class BriPdfParserService implements PdfParserService {
       String tKredit = tokens[tokens.length - 2]; // Lebih ke kiri (0.00)
       String tDebit = tokens[tokens.length - 3]; // Lebih ke kiri (49,370.00)
 
-      // Sisanya (dari kata depan sampai sebelum kolom Debit) digabung lagi menjadi
+      int descriptionEndIndex = tokens.length - 3;
+
+      // Cek apakah token terakhir dari sisa deskripsi adalah TELLER ID (angka murni
+      // 4-8 karakter)
+      // Contoh: "8890405", "8888447", "0".
+      if (descriptionEndIndex > 0 && tokens[descriptionEndIndex - 1].matches("^\\d{1,8}$")) {
+         // Abaikan Teller ID ini agar tidak masuk ke Uraian Transaksi / Deskripsi
+         descriptionEndIndex--;
+      }
+
+      // Sisanya (dari kata depan sampai sebelum kolom Teller/Debit) digabung lagi
+      // menjadi
       // nama "Keterangan Deskripsi"
       StringBuilder descBuilder = new StringBuilder();
-      for (int i = 0; i < tokens.length - 3; i++) {
+      for (int i = 0; i < descriptionEndIndex; i++) {
          descBuilder.append(tokens[i]).append(" ");
       }
 
