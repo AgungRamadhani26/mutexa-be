@@ -213,7 +213,7 @@ public class DocumentService {
                      mutationDocumentRepository.save(document);
                   } else {
                      document.setStatus(DocumentStatus.FAILED);
-                     document.setErrorMessage("Gagal menemukan transaksi melalui pemindaian Gambar Tesseract OCR BCA.");
+                     document.setErrorMessage("Gagal menemukan transaksi melalui pemindaian OCR (PaddleOCR) BCA.");
                      mutationDocumentRepository.save(document);
                   }
                } catch (Exception e) {

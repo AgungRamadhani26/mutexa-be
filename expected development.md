@@ -53,9 +53,9 @@ Spring Boot REST API
         |
         +--> SQL Server
         |
-        +--> PDF Parser (PDFBox)
+        +--> PDF Parser (PDFBox + Regex per Bank)
         |
-        +--> OCR Service (Ollama / Tesseract fallback)
+        +--> Python Microservice (PaddleOCR + PP-Structure)
         |
         +--> Export Service (Excel)
 ```
@@ -111,24 +111,21 @@ Catatan implementasi schema:
 
 ## 4.3 OCR / AI
 
-### Jalur PDF Digital
+### Jalur PDF Digital (Prioritas Utama)
 
-- **Apache PDFBox** untuk PDF digital
-- dipakai untuk dokumen yang memiliki text layer dan tetap menjadi jalur paling akurat
+- **Apache PDFBox** dikombinasikan dengan Custom Regex per bank (BRI, Mandiri, UOB, dll).
+- Ini adalah jalur emas: wajib dipakai untuk dokumen mutasi berformat Digital PDF asli dari bank. Akurasi 100%, deterministik, dan sangat ringan terhadap CPU/Resource Server.
 
-### Jalur Image / Scan
+### Jalur Image / Scanned Physical Document
 
-- **Ollama** sebagai local AI runtime untuk vision-based extraction
-- Model awal yang direkomendasikan:
-  - `llama3.2-vision`
-  - alternatif ringan: `llava`
-- **Tesseract OCR** disiapkan sebagai fallback teknis jika hasil model vision tidak konsisten pada dokumen tertentu
+- **Python Microservice (PaddleOCR)** sebagai core engine OCR. Dipilih karena `PP-Structure` miliknya sangat superior dalam mendeteksi dan mengekstrak bentuk tabel berkolom dibanding Tesseract.
+- **Tesseract & Ollama Local Vision** telah dihapus/didemosi dari planning karena kerap berhalusinasi pada data uang dan hancur saat membaca tanpa garis tabel yang tegas (borderless table).
+- Arsitektur ini mengharuskan backend Java Spring Boot mengirimkan gambar ke microservice Python untuk diproses, kemudian hasilnya dikembalikan dalam format standard.
 
-### Keputusan fase 1
+### Keputusan Fase 1
 
-- **PDF digital wajib didukung**
-- **image / scan juga wajib didukung**
-- karena itu backend harus memiliki **dua pipeline parsing** yang sama-sama aktif sejak fase 1
+- **PDF digital wajib didukung dan menjadi fokus utama penyelesaian.**
+- **Image / scan akan diimplementasikan menyusul** dengan pipeline yang memiliki _Double-Check Mathematical Validation_ dan layar `Review Draft` (Manual Intervention) di sisi Angular Frontend untuk mencegah tercatatnya data uang hasil halusinasi OCR secara permanen.
 
 ## 4.4 Frontend
 
@@ -386,65 +383,43 @@ Jika tidak ada text layer:
 - kirim ke OCR / vision service
 - validasi hasil OCR sebelum simpan
 
-## 8.2 Preprocessing untuk OCR
+## 8.2 Preprocessing Image (Sebelum OCR)
 
-Jika memakai image / scan:
+Akurasi OCR image sangat bergantung pada kualitas pre-processing. Jika memakai image / scan, Microservice Python akan menerapkan:
 
-- grayscale
-- thresholding
-- deskew jika gambar miring
-- crop margin berlebih jika perlu
-- resize bila resolusi terlalu kecil
+- Binarization / High Contrast (mengubah file ke hitam-putih murni)
+- Thresholding
+- Deskewing (analisis garis lurus untuk merotasi dokumen yang difoto/di-scan miring)
+- Denoising (menghilangkan debu atau noda dari kertas resi)
+- Layout Analysis menggunakan **PaddleOCR PP-Structure** untuk memagari baris tabel secara presisi (Bounding box extraction).
 
-## 8.3 Ollama Strategy
+## 8.3 Strategi Integritas Image Extraction (PaddleOCR)
 
-Ollama dipakai **bukan sebagai sumber kebenaran utama**, tetapi sebagai alat bantu ekstraksi saat dokumen bukan PDF digital.
+Hasil OCR (Image to Text) **tidak boleh dipercaya 100%** langsung masuk ke hitungan total Dashboard, karena alat OCR apapun di dunia tetap berpotensi salah me-_render_ angka (misal: "O" terbaca "0").
 
 Best practice:
 
-- gunakan prompt yang ketat
-- minta output JSON sederhana
-- jangan langsung percaya 100%
-- lakukan validasi backend setelah AI mengembalikan hasil
+- Gunakan **Mathematical Validation (Double-Check Algorithm)** di tier Java Backend:
+  `Saldo Baris Sebelumnya + Nominal Kredit - Nominal Debit = Saldo Baris Saat Ini`
+- Apabila hasil matematika di backend ini gagal/meleset diakibatkan oleh salah baca OCR, maka flag transaksi tersebut sebagai `NEEDS_REVIEW`.
+- Transaksi bergambar yang tidak lewat _math-check_ **TIDAK** langsung dikunci ke database final. Melainkan ditahan di sebuah halaman antarmuka Frontend (Draft / Review) untuk diedit atau disetujui penjaga / analis (operator) kebenarannya secara manual sesuai foto faktur yang dilampirkan.
 
-Contoh target struktur hasil OCR / vision:
+## 8.4 Validasi General
 
-```json
-{
-  "accountName": "...",
-  "accountNumber": "...",
-  "period": "2025-12 to 2026-02",
-  "transactions": [
-    {
-      "date": "2025-12-20",
-      "description": "Transfer BRI - PONATIN",
-      "flag": "CR",
-      "amount": 45993000
-    }
-  ]
-}
-```
+Semua hasil parsifikasi (baik PDF maupun OCR) harus memenuhi standar minimum:
 
-## 8.4 Validasi Hasil OCR
-
-Semua hasil OCR harus divalidasi:
-
-- tanggal valid
-- nominal valid
-- flag hanya `CR` atau `DB`
-- tidak ada nominal negatif jika desain sistem tidak mengizinkan
-- data duplikat dicegah
-- deskripsi kosong diberi treatment khusus
+- format tanggal bisa di-parse
+- angka/nominal tidak mengandung huruf
+- flag hanya boleh Mutasi `CR` (Masuk) atau `DB` (Keluar)
+- data ter-duplikat _identical_ (dicegah masuk database lewat teknik "MD5 Hashing" dengan Indexing Baris Document).
 
 ## 8.5 Rekomendasi Praktis Fase 1
 
-Agar tetap realistis namun sesuai kebutuhan bisnis:
+Agar tetap realistis namun sesuai kebutuhan bisnis perbankan:
 
-- **wajib**: dukung PDF digital sejak awal
-- **wajib**: dukung image / scan sejak awal
-- **wajib**: siapkan validasi hasil OCR agar data image tidak langsung dipercaya mentah
-- **teknik minim error**: implementasikan parser PDF dan parser image sebagai dua alur terpisah tetapi berakhir pada model transaksi normalisasi yang sama
-- **fallback teknis**: jika hasil Ollama untuk dokumen image tidak konsisten, gunakan kombinasi preprocessing + Tesseract atau lakukan status `NEEDS_REVIEW`, tetapi kemampuan menerima image tetap harus ada di fase 1
+- **Wajib (First Milestone)**: Selesaikan ekstraksi dari PDF digital (`PDFBox` + Regex per Bank: BCA, BRI, Mandiri, UOB) yang akurasinya dipastikan kebal.
+- **Milestone Kedua**: Bangun jembatan komunikasi backend (Spring Boot) ke microservice pendukung (Python HTTP API) yang akan mengeksekusi PaddleOCR pada file image.
+- **Safeguard Output OCR**: Implementasikan layar Frontend khusus untuk rekonsiliasi manual mutasi dari hasil ekstraksi foto.
 
 ---
 
