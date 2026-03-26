@@ -172,38 +172,84 @@ public class BcaImageParserService {
       List<BankTransaction> list = new ArrayList<>();
       String[] lines = ocrText.replace("\\n", "\n").split("\n");
 
-      // Pattern Date Regex ini disempurnakan buat Paddle OCR
-      // Mengatasi spasi yang hilang di awal kalimat "01/11 TRSF E-BANKING..."
-      Pattern patternDate = Pattern.compile("(?i)^\\s*([Oo0-3]?[0-9]\\s*[/|lI1!,\\\\]\\s*[Oo0-1]?[0-9])\\s+(.*)");
+      // Pattern untuk deteksi Date di BCA (Toleransi karakter \ / l I 1 dll). Date
+      // bisa di mana saja.
+      Pattern patternDate = Pattern.compile("(?i)\\b([Oo0-3]?[0-9]\\s*[/|lI1!,\\\\]\\s*[Oo0-1]?[0-9])\\b");
+
+      // Pattern amount untuk mata uang BCA (contoh: 2,618.980.00 atau 10.000,00)
+      Pattern amountPattern = Pattern.compile("(\\b\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{2})?\\b|\\b\\d+[.,]\\d{2}\\b)");
 
       for (int i = 0; i < lines.length; i++) {
          String line = lines[i].trim();
          if (line.isEmpty() || line.toLowerCase().contains("saldo awal")
-               || line.toLowerCase().contains("halaman berikut"))
+               || line.toLowerCase().contains("halaman berikut") || line.toLowerCase().contains("saldo akhir"))
             continue;
 
-         Matcher matcher = patternDate.matcher(line);
-         if (matcher.find()) {
-            String rawDateGroup = matcher.group(1);
-            // Konversi karakter typo OCR yang sering terjadi sebelum di regex
-            String cleanStr = rawDateGroup.replaceAll("[Oo]", "0").replaceAll("[Iil|]", "1");
-            String dateStr = cleanStr.replaceAll("[^0-9]", ""); // "01f11" -> "0111", "011" -> "011"
+         Matcher m = patternDate.matcher(line);
+         boolean hasDate = m.find();
+         boolean isJustTanggal = line.toUpperCase().startsWith("TANGGAL");
 
-            // Kita gabungkan baris saat ini dengan 2 baris berikutnya untuk memastikan
+         if (hasDate && !isJustTanggal) {
+            String rawDateGroup = m.group(1);
+
+            // Kita gabungkan baris saat ini dengan 2-3 baris berikutnya untuk memastikan
             // deskripsi dan angka (amount) yang sering terpotong ke bawah bisa terambil
             // semuanya
-            StringBuilder fullTextBuilder = new StringBuilder(matcher.group(2).trim());
-            for (int k = 1; k <= 2; k++) {
+            StringBuilder stitched = new StringBuilder(line);
+            int jump = i;
+            for (int k = 1; k <= 3; k++) {
                if (i + k < lines.length) {
                   String nextLine = lines[i + k].trim();
-                  // Jika nextLine adalah tanggal baru, hentikan penggabungan
-                  if (patternDate.matcher(nextLine).find()) {
+
+                  // Deteksi batas halaman atau akhir tabel
+                  if (nextLine.toLowerCase().contains("saldo awal") ||
+                        nextLine.toLowerCase().contains("halaman berikut") ||
+                        nextLine.toLowerCase().contains("saldo akhir"))
                      break;
+
+                  Matcher nm = patternDate.matcher(nextLine);
+                  boolean nextHasDate = nm.find();
+                  boolean nextIsJustTanggal = nextLine.toUpperCase().startsWith("TANGGAL");
+
+                  // Jika line berikutnya juga punya format tanggal (dan bukan sekedar string
+                  // "Tanggal :")
+                  // dan mengandung setidaknya satu amount... berarti itu adalah baris mutasi
+                  // baru. Stop gabung.
+                  if (nextHasDate && !nextIsJustTanggal && nextLine.length() > 10) {
+                     Matcher nam = amountPattern.matcher(nextLine);
+                     if (nam.find()) {
+                        break;
+                     }
                   }
-                  fullTextBuilder.append(" ").append(nextLine);
+
+                  stitched.append(" ").append(nextLine);
+                  jump = i + k;
                }
             }
-            String remainingText = fullTextBuilder.toString();
+
+            String fullText = stitched.toString();
+            String rawDesc = fullText;
+
+            // Ekstrak Nilai Uang (Amount) & Balance
+            Matcher am = amountPattern.matcher(rawDesc);
+            List<String> currencyMatches = new ArrayList<>();
+            while (am.find()) {
+               currencyMatches.add(am.group(1));
+               // Kita hapus angka dari calon description text agar deskripsinya bersih
+               rawDesc = rawDesc.replace(am.group(1), "");
+            }
+
+            // Hapus string Date regex yang trigger pertama kali
+            rawDesc = rawDesc.replaceFirst("(?i)\\b" + Pattern.quote(rawDateGroup) + "\\b", "");
+
+            // Bersihkan sisa keyword yang nyempil
+            rawDesc = rawDesc.replaceAll("(?i)\\b(DB|CR|TGL:|TANGGAL :)\\b", "").trim();
+            // Bersihkan kelebihan spasi
+            rawDesc = rawDesc.replaceAll("\\s+", " ").trim();
+
+            // Lanjut ke identifikasi Date
+            String cleanStr = rawDateGroup.replaceAll("[Oo]", "0").replaceAll("[Iil|]", "1");
+            String dateStr = cleanStr.replaceAll("[^0-9]", ""); // "01f11" -> "0111", "131" -> "131"
 
             LocalDate txDate = null;
             try {
@@ -213,22 +259,17 @@ public class BcaImageParserService {
                      day = Integer.parseInt(dateStr.substring(0, 2));
                      month = Integer.parseInt(dateStr.substring(2, 4));
                   } else {
-                     // Format rusak dari tesseract panjangnya cuma 3 digit (misal: "011").
-                     // Kita ambil 2 digit pertama sebagai hari. Bulannya sering terpotong 1 digit
-                     // doang, jadi kita biarkan dulu.
+                     // Format rusak 3 digit (misal: "131" -> 13 bulan 1)
                      day = Integer.parseInt(dateStr.substring(0, 2));
                      month = Integer.parseInt(dateStr.substring(2, 3));
                   }
 
-                  // Jika bulan beda dengan expected, tapi harinya masuk akal, kita paksa pakai
-                  // bulan dokumen jika ketemu (atau pakai lastSeenDate nanti)
                   if (day >= 1 && day <= 31) {
                      if (month < 1 || month > 12 || dateStr.length() == 3) {
                         if (dateState[0] != null)
                            month = dateState[0].getMonthValue();
                      }
 
-                     // Logika Transisi Tahun (Desember -> Januari)
                      if (dateState[0] != null) {
                         int prevMonth = dateState[0].getMonthValue();
                         if (prevMonth == 12 && month == 1) {
@@ -256,29 +297,12 @@ public class BcaImageParserService {
             }
             dateState[0] = txDate; // Simpan untuk baris berikutnya di bawah
 
-            String rawDesc = remainingText;
             BigDecimal amount = BigDecimal.ZERO;
             BigDecimal balance = BigDecimal.ZERO;
             MutationType type = MutationType.DB;
 
-            if (remainingText.toUpperCase().contains(" CR ") || remainingText.toUpperCase().endsWith(" CR")) {
+            if (fullText.toUpperCase().contains(" CR ") || fullText.toUpperCase().endsWith(" CR")) {
                type = MutationType.CR;
-            }
-
-            // Ekstrak Nilai Uang (Amount) - OCR Paddle kadang ada salah baca titik/koma dan
-            // spasi
-            // Ini akan mengambil angka-angka dengan format mata uang yang umum
-            List<String> currencyMatches = new ArrayList<>();
-            List<Integer> startIndices = new ArrayList<>();
-
-            // Simpan indeks tempat angka uang ditemukan
-            Matcher simpleCurrMatcher = Pattern
-                  .compile("(\\b\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{2})?\\b|\\b\\d+[.,]\\d{2}\\b)")
-                  .matcher(remainingText);
-
-            while (simpleCurrMatcher.find()) {
-               currencyMatches.add(simpleCurrMatcher.group(1));
-               startIndices.add(simpleCurrMatcher.start(1));
             }
 
             if (currencyMatches.size() >= 2) {
@@ -291,23 +315,14 @@ public class BcaImageParserService {
                if (!amtStr.replaceAll("[^\\d]", "").isEmpty())
                   amount = new BigDecimal(amtStr.replaceAll("[^\\d]", "")).divide(new BigDecimal(100));
 
-               int amtStartIndex = startIndices.get(startIndices.size() - 2);
-               rawDesc = remainingText.substring(0, amtStartIndex).trim();
             } else if (currencyMatches.size() == 1) {
                String amtStr = currencyMatches.get(0);
                if (!amtStr.replaceAll("[^\\d]", "").isEmpty())
                   amount = new BigDecimal(amtStr.replaceAll("[^\\d]", "")).divide(new BigDecimal(100));
-
-               int amtStartIndex = startIndices.get(0);
-               rawDesc = remainingText.substring(0, amtStartIndex).trim();
             }
 
-            // Jika line ini hanya berisi string yang panjangnya < 3 (misal sisa DB / CR
-            // saja), ignore
-            if (rawDesc.length() < 3)
+            if (rawDesc.length() < 3 && amount.compareTo(BigDecimal.ZERO) == 0)
                continue;
-
-            rawDesc = rawDesc.replaceAll("(?i)\\s*(DB|CR)$", "").trim();
 
             BankTransaction tx = BankTransaction.builder()
                   .mutationDocument(document)
@@ -335,6 +350,7 @@ public class BcaImageParserService {
                list.add(tx);
             }
 
+            i = jump; // Majukan pointer iterasi
          }
       }
       return list;
