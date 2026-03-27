@@ -176,8 +176,11 @@ public class BcaImageParserService {
       // bisa di mana saja.
       Pattern patternDate = Pattern.compile("(?i)\\b([Oo0-3]?[0-9]\\s*[/|lI1!,\\\\]\\s*[Oo0-1]?[0-9])\\b");
 
-      // Pattern amount untuk mata uang BCA (contoh: 2,618.980.00 atau 10.000,00)
-      Pattern amountPattern = Pattern.compile("(\\b\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{2})?\\b|\\b\\d+[.,]\\d{2}\\b)");
+      // RUBAH KE STRICT PATTERN: Harus ada 2 digit desimal (,00 atau .00) di
+      // belakang!
+      // Ini mencegah angka-angka referensi di Keterangan seperti "INV 15.000"
+      // terdeteksi sebagai Saldo/Mutasi!
+      Pattern amountPattern = Pattern.compile("(\\b\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})\\b)");
 
       for (int i = 0; i < lines.length; i++) {
          String line = lines[i].trim();
@@ -189,7 +192,13 @@ public class BcaImageParserService {
          boolean hasDate = m.find();
          boolean isJustTanggal = line.toUpperCase().startsWith("TANGGAL");
 
-         if (hasDate && !isJustTanggal) {
+         // PERBAIKAN: Tanggal MUTASI harus ada di kisaran AWAL baris (index < 30) agar
+         // tidak menangkap
+         // teks "TANGGAL LAHIR 12/03" di tengah-tengah deskripsi. Ini menyelesaikan bug
+         // "125 transaksi" menjadi benar 116.
+         boolean isValidDatePosition = hasDate && m.start() <= 30;
+
+         if (isValidDatePosition && !isJustTanggal) {
             String rawDateGroup = m.group(1);
 
             // Kita gabungkan baris saat ini dengan 2-3 baris berikutnya untuk memastikan
