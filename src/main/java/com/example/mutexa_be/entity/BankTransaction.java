@@ -68,12 +68,22 @@ public class BankTransaction {
    // Bendera apakah transaksi ini dikecualikan (excluded) pada dashboard atau
    // tidak
    @Column(name = "is_excluded", nullable = false)
+   @Builder.Default
    private Boolean isExcluded = false;
 
    // Kode hash yang tersusun dari (Tanggal+Nilai+Tipe+Desktripsi) untuk mencegah
    // duplikasi simpan
    @Column(name = "duplicate_hash", unique = true, nullable = false)
    private String duplicateHash;
+
+   // Menandai apakah mutasi ini terdeteksi sebagai anomali oleh AnomalyDetectionService
+   @Column(name = "is_anomaly", nullable = false)
+   @Builder.Default
+   private Boolean isAnomaly = false;
+
+   // Alasan kenapa transaksi ini dianggap sebagai anomali (misal: "Indikasi Window Dressing")
+   @Column(name = "anomaly_reason", columnDefinition = "TEXT")
+   private String anomalyReason;
 
    // Waktu rekam transaksi ini ke dalam database mutasi internal
    @CreationTimestamp

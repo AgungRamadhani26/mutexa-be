@@ -5,6 +5,8 @@ import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.entity.enums.MutationType;
 import com.example.mutexa_be.entity.enums.TransactionCategory;
 import com.example.mutexa_be.repository.BankTransactionRepository;
+import com.example.mutexa_be.service.CategorizationService;
+import com.example.mutexa_be.service.AnomalyDetectionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,8 @@ import java.util.regex.Pattern;
 public class BcaImageParserService {
 
    private final BankTransactionRepository bankTransactionRepository;
+   private final CategorizationService categorizationService;
+   private final AnomalyDetectionService anomalyDetectionService;
    private final RestTemplate restTemplate = new RestTemplate();
    private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -98,6 +102,12 @@ public class BcaImageParserService {
          }
 
          if (!transactions.isEmpty()) {
+            // 1. Klasifikasi Kategorinya
+            categorizationService.enrichUnclassified(transactions);
+
+            // 2. Deteksi Anomali
+            anomalyDetectionService.detectAnomalies(transactions);
+
             bankTransactionRepository.saveAll(transactions);
             log.info("Sukses menyimpan {} total transaksi dari PDF BCA.", transactions.size());
          } else {

@@ -37,35 +37,73 @@ public class CategorizationService {
          TransactionCategory categorizedAs = TransactionCategory.UNCLASSIFIED;
 
          // Kategori: ADMIN
-         if (matchesKeyword(textToSearch, "adm", "admin", "administrasi", "biaya admin", "adm inc", "fee", "provisi")) {
+         if (matchesKeyword(textToSearch,
+               "adm", "admin", "administrasi", "biaya adm", "biaya admin", "biaya administrasi",
+               "adm rek", "admin rekening", "biaya admin bulanan", "admin bulanan",
+               "monthly fee", "monthly admin", "admin fee", "account fee",
+               "account maintenance", "maintenance fee", "service charge", "biaya layanan",
+               // Tambahan spesifik bank lokal (Kartu, SMS, Materai, Penalti Saldo, Cetak)
+               "biaya kartu", "annual fee", "biaya materai", "biaya sms", "sms banking",
+               "biaya notifikasi", "biaya saldo minimum", "fall below fee", "potongan bulanan",
+               "biaya pengelolaan", "provisi")) {
             categorizedAs = TransactionCategory.ADMIN;
          }
          // Kategori: TAX (Pajak)
-         else if (matchesKeyword(textToSearch, "pajak", "tax", "pph")) {
+         else if (matchesKeyword(textToSearch,
+               "pajak", "tax", "pph", "ppn", "pjk", "pajak bunga",
+               "pajak penghasilan", "pajak bagi hasil", "potongan pajak",
+               "pajak deposito", "withholding tax", "wht", "tx", "pajak hadiah")) {
             categorizedAs = TransactionCategory.TAX;
          }
          // Kategori: INTEREST (Bunga Bank)
-         else if (matchesKeyword(textToSearch, "bunga", "interest", "bagi hasil", "nisbah")) {
+         else if (matchesKeyword(textToSearch,
+               "bunga", "interest", "bagi hasil", "nisbah",
+               "bunga tabungan", "bunga deposito", "jasa giro", "int",
+               "credit interest", "kredit bunga", "bunga harian",
+               "tambahan bunga", "pendapatan bunga", "interest income")) {
             categorizedAs = TransactionCategory.INTEREST;
          }
-         // Kategori: INCOME (Pendapatan/Gaji) - Biasanya dibatasi untuk tipe CR, tapi
-         // dicheck via keyword dulu
-         else if (matchesKeyword(textToSearch, "gaji", "salary", "payroll", "honor", "thr", "dividen")) {
+         // Kategori: INCOME (Pendapatan/Omzet Bisnis/Gaji)
+         // Terbatas pada kata yang PASTI merupakan penerimaan/pendapatan (arus kas masuk
+         // riil)
+         else if (matchesKeyword(textToSearch,
+               "gaji", "salary", "payroll", "pyrl", "honor", "honorarium",
+               "thr", "dividen", "dividend", "insentif", "incentive",
+               "tunjangan", "remunerasi", "pensiun", "upah", "uang saku",
+               "komisi", "commission", "sales", "penjualan", "pendapatan",
+               "revenue", "omset", "omzet", "penerimaan", "proyek", "subsidi",
+               "modal", "setor", "setoran", "incoming", "kredit masuk",
+               "setoran tunai", "settlement merchant", "pencairan dana")) {
             categorizedAs = TransactionCategory.INCOME;
          }
-         // Kategori: TRANSFER
-         else if (matchesKeyword(textToSearch, "trf", "transfer", "trsf", "pemindahan", "kiriman", "inkaso", "rtgs",
-               "skn", "bifast", "bi-fast")) {
+         // Kategori: TRANSFER (Metode Pembayaran, Kanal Transaksi, Perpindahan Dana
+         // Umum)
+         // Memisahkan transaksi general seperti QRIS, EDC, Pelunasan yang bisa jadi
+         // Debit(Keluar) / Credit(Masuk)
+         else if (matchesKeyword(textToSearch,
+               "trf", "transfer", "trsf", "pemindahan", "kiriman", "inkaso", "rtgs",
+               "skn", "bifast", "bi-fast", "qris", "edc", "pembayaran", "bayar",
+               "payment", "invoice", "inv", "tagihan", "pelunasan", "termin", "dp",
+               "down payment", "virtual account", "va", "topup", "top up",
+               "ewallet", "e-wallet", "ovo", "gopay", "shopeepay", "dana", "linkaja",
+               "tarikan", "tarik tunai", "atm", "m-banking", "internet banking", "merchant",
+               "mcm", "cms", "aft", "inhouse", "pindah buku", "overbooking", "pb", "bilyet")) {
             categorizedAs = TransactionCategory.TRANSFER;
          }
-         // Kategori: ANOMALY (Koreksi)
-         else if (matchesKeyword(textToSearch, "koreksi", "reversal", "retur", "batal", "cancel")) {
-            categorizedAs = TransactionCategory.ANOMALY;
-         }
 
-         // Set kategori baru jika ditemukan. Jika tidak, akan tetap UNCLASSIFIED.
+         // Catatan Arsitektur:
+         // Anomaly dipisahkan dari Kategori agar 'Anomaly' menjadi flag/atribut tambahan
+         // (bukan mutually exclusive).
+         // Proses Anomaly (misal check pola window dressing, z-score nominal)
+         // akan dikerjakan di 'AnomalyDetectionService' tersendiri setelah proses ini
+         // selesai.
+
+         // Set kategori baru jika ditemukan. Jika tidak, jadikan TRANSFER sebagai
+         // default (fallback).
          if (categorizedAs != TransactionCategory.UNCLASSIFIED) {
             tx.setCategory(categorizedAs);
+         } else {
+            tx.setCategory(TransactionCategory.TRANSFER);
          }
       }
 

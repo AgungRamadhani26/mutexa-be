@@ -36,38 +36,12 @@ public class TransactionRefinementService {
     * Menggunakan rule-based matching sesuai dengan plan expected development.
     */
    public TransactionCategory categorizeTransaction(String normalizedDescription, boolean isCredit) {
-      if (normalizedDescription == null) {
-         return TransactionCategory.UNCLASSIFIED;
-      }
-
-      String lowerDesc = normalizedDescription.toLowerCase();
-
-      // 1. Kategori Admin Fee (BIAYA ADMIN) -> biasanya debit
-      if (!isCredit
-            && (lowerDesc.contains("biaya admin") || lowerDesc.contains("adm") || lowerDesc.contains("administrasi"))) {
-         return TransactionCategory.ADMIN;
-      }
-
-      // 2. Kategori Pajak (TAX) -> biasanya debit
-      if (!isCredit && (lowerDesc.contains("pajak") || lowerDesc.contains("tax") || lowerDesc.contains("pjk"))) {
-         return TransactionCategory.TAX;
-      }
-
-      // 3. Kategori Bunga Pinjaman (LOAN_INTEREST) -> biasanya debit (atau pendapatan
-      // bunga kalau credit)
-      if (lowerDesc.contains("bunga") || lowerDesc.contains("interest")) {
-         return isCredit ? TransactionCategory.INCOME : TransactionCategory.INTEREST;
-      }
-
-      // 4. Kategori Income (INCOME) -> biasanya kredit (gaji, honor, dll)
-      if (isCredit && (lowerDesc.contains("gaji") || lowerDesc.contains("penggajian") || lowerDesc.contains("payroll")
-            || lowerDesc.contains("fee") || lowerDesc.contains("honor") || lowerDesc.contains("salary"))) {
-         return TransactionCategory.INCOME;
-      }
-
-      // Bisa ditambahkan rule-rule lain (Anomali akan dideteksi oleh engine dashboard
-      // bukan base category parser)
-
+      // PERUBAHAN ARSITEKTUR:
+      // Modul ini tidak lagi melakukan hardcode kategori. Semua pencarian keyword
+      // (Bunga, Gaji, dll)
+      // telah dipusatkan dan dibuat jauh lebih cerdas di CategorizationService.java.
+      // Dengan mereturn UNCLASSIFIED, kita memastikan transaksi akan masuk ke
+      // pipeline CategorizationService.
       return TransactionCategory.UNCLASSIFIED;
    }
 }

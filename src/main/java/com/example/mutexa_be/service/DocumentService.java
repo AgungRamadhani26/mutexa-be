@@ -14,6 +14,7 @@ import com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService;
 import com.example.mutexa_be.service.parser.uob.UobPdfParserService;
 import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
 import com.example.mutexa_be.service.CategorizationService;
+import com.example.mutexa_be.service.AnomalyDetectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -44,6 +45,7 @@ public class DocumentService {
    private final UobPdfParserService uobPdfParserService;
    private final BcaImageParserService bcaImageParserService;
    private final CategorizationService categorizationService;
+   private final AnomalyDetectionService anomalyDetectionService;
 
    // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
    // membebani RAM
@@ -141,7 +143,13 @@ public class DocumentService {
                   }
                }
 
+               // 1. Kategorisasi Tipe Transaksi (Income, Transfer, Tax, etc)
                categorizationService.enrichUnclassified(txToSave);
+
+               // 2. Deteksi Anomali pada rangkaian transaksi (Window Dressing, Retur, Nominal Aneh)
+               anomalyDetectionService.detectAnomalies(txToSave);
+
+               // 3. Simpan ke database
                bankTransactionRepository.saveAll(txToSave);
 
                // Update document properties
