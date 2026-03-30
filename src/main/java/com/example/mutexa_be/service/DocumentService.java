@@ -13,7 +13,7 @@ import com.example.mutexa_be.service.parser.bri.BriPdfParserService;
 import com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService;
 import com.example.mutexa_be.service.parser.uob.UobPdfParserService;
 import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
-import com.example.mutexa_be.service.AiCategorizationService;
+import com.example.mutexa_be.service.CategorizationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -43,7 +43,7 @@ public class DocumentService {
    private final MandiriPdfParserService mandiriPdfParserService;
    private final UobPdfParserService uobPdfParserService;
    private final BcaImageParserService bcaImageParserService;
-   private final AiCategorizationService aiCategorizationService;
+   private final CategorizationService categorizationService;
 
    // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
    // membebani RAM
@@ -127,8 +127,10 @@ public class DocumentService {
                for (BankTransaction tx : extractedTxs) {
                   // Capping PeriodStart dan PeriodEnd dari date actual transaction
                   if (tx.getTransactionDate() != null) {
-                     if (minDate == null || tx.getTransactionDate().isBefore(minDate)) minDate = tx.getTransactionDate();
-                     if (maxDate == null || tx.getTransactionDate().isAfter(maxDate)) maxDate = tx.getTransactionDate();
+                     if (minDate == null || tx.getTransactionDate().isBefore(minDate))
+                        minDate = tx.getTransactionDate();
+                     if (maxDate == null || tx.getTransactionDate().isAfter(maxDate))
+                        maxDate = tx.getTransactionDate();
                   }
 
                   String hash = tx.getDuplicateHash();
@@ -139,13 +141,15 @@ public class DocumentService {
                   }
                }
 
-               aiCategorizationService.enrichUnclassified(txToSave);
+               categorizationService.enrichUnclassified(txToSave);
                bankTransactionRepository.saveAll(txToSave);
 
-               // Update document properties 
-               if (minDate != null) document.setPeriodStart(minDate);
-               if (maxDate != null) document.setPeriodEnd(maxDate);
-               
+               // Update document properties
+               if (minDate != null)
+                  document.setPeriodStart(minDate);
+               if (maxDate != null)
+                  document.setPeriodEnd(maxDate);
+
                document.setStatus(DocumentStatus.SUCCESS);
                mutationDocumentRepository.save(document);
 
