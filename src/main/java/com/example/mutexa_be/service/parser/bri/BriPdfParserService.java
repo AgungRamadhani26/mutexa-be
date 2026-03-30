@@ -5,6 +5,8 @@ import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.entity.enums.MutationType;
 import com.example.mutexa_be.entity.enums.TransactionCategory;
+import com.example.mutexa_be.service.TransactionRefinementService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -27,8 +29,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class BriPdfParserService implements PdfParserService {
+
+   private final TransactionRefinementService transactionRefinementService;
 
    // Regex untuk mendeteksi baris tabel yang dimulai dengan Tanggal & Jam (contoh:
    // 01/12/25 09:29:59)
@@ -241,9 +246,9 @@ public class BriPdfParserService implements PdfParserService {
          finalAmount = valDebit;
       }
 
-      // Bersihkan spasi ganda gila-gilaan dari OCR jika ada menjadi spasi tunggal
-      // normal
-      String normalizedDesc = builder.rawDescription.replaceAll("\\s+", " ");
+      // NORMALISASI MENGGUNAKAN SERVICE BARU
+      String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
+      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
 
       // Base string pembentuk Hash anti duplikasi
       String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
@@ -268,7 +273,7 @@ public class BriPdfParserService implements PdfParserService {
             .mutationType(finalType)
             .amount(finalAmount)
             .balance(valSaldo)
-            .category(TransactionCategory.UNCLASSIFIED) // Nilai awal selalu di-set "Belum Terkategori"
+            .category(finalCategory) // Diset otomatis berdasarkan rule engine
             .isExcluded(false)
             .duplicateHash(finalHash)
             .build();

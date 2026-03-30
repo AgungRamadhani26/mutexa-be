@@ -13,6 +13,7 @@ import com.example.mutexa_be.service.parser.bri.BriPdfParserService;
 import com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService;
 import com.example.mutexa_be.service.parser.uob.UobPdfParserService;
 import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
+import com.example.mutexa_be.service.AiCategorizationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -42,6 +43,7 @@ public class DocumentService {
    private final MandiriPdfParserService mandiriPdfParserService;
    private final UobPdfParserService uobPdfParserService;
    private final BcaImageParserService bcaImageParserService;
+   private final AiCategorizationService aiCategorizationService;
 
    // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
    // membebani RAM
@@ -97,105 +99,61 @@ public class DocumentService {
 
          // 5. PANGGIL PARSER SESUAI TIPE FILE & BANK SEKARANG JUGA!
          if (detectedType == DocumentType.PDF_DIGITAL) {
-            if (request.getBankName().equalsIgnoreCase("BRI")) {
-               try {
-                  log.info("Memulai parsing PDF BRI...");
-                  // Gunakan BriPdfParserService yang baru saja kita buat tadi
-                  List<BankTransaction> extractedTxs = briPdfParserService.parse(document, filePath.toString());
+            String bankName = request.getBankName().toUpperCase();
+            try {
+               log.info("Memulai parsing PDF {}...", bankName);
+               List<BankTransaction> extractedTxs = new ArrayList<>();
 
-                  // Filter anti-duplikasi sebelum di-simpan (Idempotensi vs Database saja)
-                  List<BankTransaction> txToSave = new ArrayList<>();
-                  int duplicateCount = 0;
+               if (bankName.equals("BRI")) {
+                  extractedTxs = briPdfParserService.parse(document, filePath.toString());
+               } else if (bankName.equals("MANDIRI")) {
+                  extractedTxs = mandiriPdfParserService.parse(document, filePath.toString());
+               } else if (bankName.equals("UOB")) {
+                  extractedTxs = uobPdfParserService.parse(document, filePath.toString());
+               } else {
+                  log.warn("Bank {} belum ada Regex Parser PDF-nya. Ditandai FAILED.", bankName);
+                  document.setStatus(DocumentStatus.FAILED);
+                  document.setErrorMessage("Parser PDF untuk bank " + bankName + " belum tersedia.");
+                  mutationDocumentRepository.save(document);
+                  return document;
+               }
 
-                  for (BankTransaction tx : extractedTxs) {
-                     String hash = tx.getDuplicateHash();
-                     // Cek apakah sudah ada di Database (Mencegah upload file PDF yang persis sama 2
-                     // kali)
-                     if (bankTransactionRepository.existsByDuplicateHash(hash)) {
-                        duplicateCount++;
-                     } else {
-                        txToSave.add(tx);
-                     }
+               // Proses filter duplikasi & Update Document Period
+               List<BankTransaction> txToSave = new ArrayList<>();
+               int duplicateCount = 0;
+               LocalDate minDate = null;
+               LocalDate maxDate = null;
+
+               for (BankTransaction tx : extractedTxs) {
+                  // Capping PeriodStart dan PeriodEnd dari date actual transaction
+                  if (tx.getTransactionDate() != null) {
+                     if (minDate == null || tx.getTransactionDate().isBefore(minDate)) minDate = tx.getTransactionDate();
+                     if (maxDate == null || tx.getTransactionDate().isAfter(maxDate)) maxDate = tx.getTransactionDate();
                   }
 
-                  // Simpan ke Tabel BankTransaction
-                  bankTransactionRepository.saveAll(txToSave);
-
-                  // Perbarui status dokumen
-                  document.setStatus(DocumentStatus.SUCCESS);
-                  mutationDocumentRepository.save(document);
-
-                  log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
-
-               } catch (Exception e) {
-                  log.error("Gagal saat mencoba mem-parse PDF BRI: {}", e.getMessage());
-                  document.setStatus(DocumentStatus.FAILED);
-                  document.setErrorMessage(e.getMessage());
-                  mutationDocumentRepository.save(document);
-               }
-            } else if (request.getBankName().equalsIgnoreCase("MANDIRI")) {
-               try {
-                  log.info("Memulai parsing PDF MANDIRI...");
-                  List<BankTransaction> extractedTxs = mandiriPdfParserService.parse(document, filePath.toString());
-
-                  List<BankTransaction> txToSave = new ArrayList<>();
-                  int duplicateCount = 0;
-
-                  for (BankTransaction tx : extractedTxs) {
-                     String hash = tx.getDuplicateHash();
-                     if (bankTransactionRepository.existsByDuplicateHash(hash)) {
-                        duplicateCount++;
-                     } else {
-                        txToSave.add(tx);
-                     }
+                  String hash = tx.getDuplicateHash();
+                  if (bankTransactionRepository.existsByDuplicateHash(hash)) {
+                     duplicateCount++;
+                  } else {
+                     txToSave.add(tx);
                   }
-
-                  bankTransactionRepository.saveAll(txToSave);
-                  document.setStatus(DocumentStatus.SUCCESS);
-                  mutationDocumentRepository.save(document);
-
-                  log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
-
-               } catch (Exception e) {
-                  log.error("Gagal saat mencoba mem-parse PDF MANDIRI: {}", e.getMessage());
-                  document.setStatus(DocumentStatus.FAILED);
-                  document.setErrorMessage(e.getMessage());
-                  mutationDocumentRepository.save(document);
                }
-            } else if (request.getBankName().equalsIgnoreCase("UOB")) {
-               try {
-                  log.info("Memulai parsing PDF UOB...");
-                  List<BankTransaction> extractedTxs = uobPdfParserService.parse(document, filePath.toString());
 
-                  List<BankTransaction> txToSave = new ArrayList<>();
-                  int duplicateCount = 0;
+               aiCategorizationService.enrichUnclassified(txToSave);
+               bankTransactionRepository.saveAll(txToSave);
 
-                  for (BankTransaction tx : extractedTxs) {
-                     String hash = tx.getDuplicateHash();
-                     if (bankTransactionRepository.existsByDuplicateHash(hash)) {
-                        duplicateCount++;
-                     } else {
-                        txToSave.add(tx);
-                     }
-                  }
+               // Update document properties 
+               if (minDate != null) document.setPeriodStart(minDate);
+               if (maxDate != null) document.setPeriodEnd(maxDate);
+               
+               document.setStatus(DocumentStatus.SUCCESS);
+               mutationDocumentRepository.save(document);
 
-                  bankTransactionRepository.saveAll(txToSave);
-                  document.setStatus(DocumentStatus.SUCCESS);
-                  mutationDocumentRepository.save(document);
-
-                  log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
-
-               } catch (Exception e) {
-                  log.error("Gagal saat mencoba mem-parse PDF UOB: {}", e.getMessage());
-                  document.setStatus(DocumentStatus.FAILED);
-                  document.setErrorMessage(e.getMessage());
-                  mutationDocumentRepository.save(document);
-               }
-            } else {
-               // Untuk Bank Lain yang belum didukung parser digitalnya di aplikasi kita
-               log.warn("Bank {} belum ada Regex Parser PDF-nya. Ditandai FAILED.", request.getBankName());
+               log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
+            } catch (Exception e) {
+               log.error("Gagal saat mencoba mem-parse PDF {}: {}", bankName, e.getMessage());
                document.setStatus(DocumentStatus.FAILED);
-               document.setErrorMessage("Parser PDF untuk bank " + request.getBankName() + " belum tersedia.");
+               document.setErrorMessage(e.getMessage());
                mutationDocumentRepository.save(document);
             }
          } else if (detectedType == DocumentType.IMAGE_SCAN) {

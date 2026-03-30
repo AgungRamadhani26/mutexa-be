@@ -5,6 +5,8 @@ import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.entity.enums.MutationType;
 import com.example.mutexa_be.entity.enums.TransactionCategory;
+import com.example.mutexa_be.service.TransactionRefinementService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -26,8 +28,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class UobPdfParserService implements PdfParserService {
+
+   private final TransactionRefinementService transactionRefinementService;
 
    // 1. Deteksi Statement Date (Awal Transaksi) - contoh: "03/11/2025"
    // Hanya tanggal tok, karena waktu transaksinya numpang di baris bawahnya
@@ -208,7 +213,8 @@ public class UobPdfParserService implements PdfParserService {
          finalAmount = valWithdraw;
       }
 
-      String normalizedDesc = builder.rawDescription.trim().replaceAll("\\s+", " ");
+      String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
+      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
 
       String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
@@ -221,12 +227,12 @@ public class UobPdfParserService implements PdfParserService {
             .mutationDocument(doc)
             .bankAccount(doc.getBankAccount())
             .transactionDate(builder.dateStr)
-            .rawDescription(normalizedDesc)
+            .rawDescription(builder.rawDescription.trim())
             .normalizedDescription(normalizedDesc)
             .mutationType(finalType)
             .amount(finalAmount)
             .balance(valSaldo)
-            .category(TransactionCategory.UNCLASSIFIED)
+            .category(finalCategory)
             .isExcluded(false)
             .duplicateHash(finalHash)
             .build();
