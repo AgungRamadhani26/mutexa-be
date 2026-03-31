@@ -10,7 +10,7 @@ public class AppConfig {
 
     /**
      * Menyediakan instance ObjectMapper secara global.
-     * Bean ini diperlukan oleh OllamaOcrService untuk proses konversi (parsing) 
+     * Bean ini diperlukan oleh OllamaOcrService untuk proses konversi (parsing)
      * Json Text ke Object Java, maupun Object Java ke Json Text.
      */
     @Bean

@@ -26,4 +26,10 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
          "GROUP BY YEAR(t.transaction_date), MONTH(t.transaction_date) " +
          "ORDER BY YEAR(t.transaction_date) DESC, MONTH(t.transaction_date) DESC", nativeQuery = true)
    List<Object[]> getMonthlySummary();
+
+   // Get Latest Detail Transactions (Max 100 for dashboard performance)
+   List<BankTransaction> findTop100ByOrderByTransactionDateDescIdDesc();
+
+   // Get All Transactions sorted by Transaction Date ASC and ID ASC
+   List<BankTransaction> findAllByOrderByTransactionDateAscIdAsc();
 }

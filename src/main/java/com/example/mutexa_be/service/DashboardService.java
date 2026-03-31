@@ -1,6 +1,8 @@
 package com.example.mutexa_be.service;
 
+import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
+import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,5 +44,15 @@ public class DashboardService {
                .saldoAkhir(saldoAkhir)
                .build();
       }).collect(Collectors.toList());
+   }
+
+   public List<DetailTransaksiResponse> getDetailSemuaTransaksi() {
+      List<BankTransaction> transactions = bankTransactionRepository.findAllByOrderByTransactionDateAscIdAsc();
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .build()).collect(Collectors.toList());
    }
 }
