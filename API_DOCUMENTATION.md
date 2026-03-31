@@ -79,4 +79,44 @@ curl --location 'http://localhost:9091/api/documents/upload' \
 
 ---
 
+## 2. Dashboard Analytics
+
+Menyediakan data statistik dan rangkuman transaksi untuk ditampilkan di halaman Dashboard frontend.
+
+### 2.1 Summary Perbulan
+
+Mengambil ringkasan saldo, total/frekuensi credit dan debit yang dikelompokkan berdasarkan bulan dan tahun.
+
+- **Endpoint:** `GET /api/dashboard/summary-perbulan`
+- **Content-Type:** `application/json`
+
+**Contoh cURL:**
+
+```bash
+curl --location 'http://localhost:9091/api/dashboard/summary-perbulan'
+```
+
+**Contoh Response Sukses (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Berhasil mengambil data summary per bulan.",
+  "data": [
+    {
+      "periode": "Maret 2026",
+      "saldoAkhir": 5000000.0,
+      "totalCredit": 1500000.0,
+      "totalDebit": 500000.0,
+      "freqCredit": 10,
+      "freqDebit": 5
+    }
+  ],
+  "code": 200,
+  "timestamp": "2026-03-30T10:00:00Z"
+}
+```
+
+---
+
 _Catatan: File ini akan terus ditambahkan secara otomatis jika ada endpoint baru._
