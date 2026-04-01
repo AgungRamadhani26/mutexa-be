@@ -27,9 +27,25 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
          "ORDER BY YEAR(t.transaction_date) DESC, MONTH(t.transaction_date) DESC", nativeQuery = true)
    List<Object[]> getMonthlySummary();
 
-   // Get Latest Detail Transactions (Max 100 for dashboard performance)
-   List<BankTransaction> findTop100ByOrderByTransactionDateDescIdDesc();
+   // Get Monthly Summary filtered by Document ID
+   @Query(value = "SELECT " +
+         "    YEAR(t.transaction_date) AS year, " +
+         "    MONTH(t.transaction_date) AS month, " +
+         "    SUM(CASE WHEN t.mutation_type = 'CR' THEN t.amount ELSE 0 END) AS totalCredit, " +
+         "    SUM(CASE WHEN t.mutation_type = 'DB' THEN t.amount ELSE 0 END) AS totalDebit, " +
+         "    SUM(CASE WHEN t.mutation_type = 'CR' THEN 1 ELSE 0 END) AS freqCredit, " +
+         "    SUM(CASE WHEN t.mutation_type = 'DB' THEN 1 ELSE 0 END) AS freqDebit, " +
+         "    (SELECT TOP 1 b.balance FROM bank_transaction b " +
+         "     WHERE YEAR(b.transaction_date) = YEAR(t.transaction_date) " +
+         "     AND MONTH(b.transaction_date) = MONTH(t.transaction_date) " +
+         "     AND b.mutation_document_id = :documentId " +
+         "     ORDER BY b.transaction_date DESC, b.id DESC) AS saldoAkhir " +
+         "FROM bank_transaction t " +
+         "WHERE t.mutation_document_id = :documentId " +
+         "GROUP BY YEAR(t.transaction_date), MONTH(t.transaction_date) " +
+         "ORDER BY YEAR(t.transaction_date) DESC, MONTH(t.transaction_date) DESC", nativeQuery = true)
+   List<Object[]> getMonthlySummaryByDocumentId(Long documentId);
 
-   // Get All Transactions sorted by Transaction Date ASC and ID ASC
-   List<BankTransaction> findAllByOrderByTransactionDateAscIdAsc();
+   // Get ALL filtered by Document ID
+   List<BankTransaction> findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(Long mutationDocumentId);
 }

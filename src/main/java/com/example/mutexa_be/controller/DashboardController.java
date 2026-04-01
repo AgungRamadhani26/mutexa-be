@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.ByteArrayInputStream;
@@ -30,20 +31,20 @@ public class DashboardController {
    private final ExcelExportService excelExportService;
 
    @GetMapping("/summary-perbulan")
-   public ResponseEntity<ApiResponse<List<SummaryPerbulanResponse>>> getSummaryPerbulan() {
-      List<SummaryPerbulanResponse> data = dashboardService.getSummaryPerbulan();
+   public ResponseEntity<ApiResponse<List<SummaryPerbulanResponse>>> getSummaryPerbulan(@RequestParam Long documentId) {
+      List<SummaryPerbulanResponse> data = dashboardService.getSummaryPerbulan(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data summary per bulan.");
    }
 
    @GetMapping("/detail-transaksi")
-   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getDetailSemuaTransaksi() {
-      List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi();
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getDetailSemuaTransaksi(@RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data detail transaksi.");
    }
 
    @GetMapping("/export-excel")
-   public ResponseEntity<InputStreamResource> downloadExcel() throws IOException {
-      List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi();
+   public ResponseEntity<InputStreamResource> downloadExcel(@RequestParam Long documentId) throws IOException {
+      List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
       ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data);
 
       HttpHeaders headers = new HttpHeaders();

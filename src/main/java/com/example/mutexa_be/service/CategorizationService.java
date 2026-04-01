@@ -82,7 +82,9 @@ public class CategorizationService {
          // Debit(Keluar) / Credit(Masuk)
          else if (matchesKeyword(textToSearch,
                "trf", "transfer", "trsf", "pemindahan", "kiriman", "inkaso", "rtgs",
-               "skn", "bifast", "bi-fast", "qris", "edc", "pembayaran", "bayar",
+               "skn", "bifast", "bi-fast",
+
+               "qris", "edc", "pembayaran", "bayar",
                "payment", "invoice", "inv", "tagihan", "pelunasan", "termin", "dp",
                "down payment", "virtual account", "va", "topup", "top up",
                "ewallet", "e-wallet", "ovo", "gopay", "shopeepay", "dana", "linkaja",

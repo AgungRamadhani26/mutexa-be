@@ -31,6 +31,10 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
+
+import com.example.mutexa_be.dto.response.AccountWithDocumentsResponse;
+import com.example.mutexa_be.dto.response.DocumentListResponse;
 
 @Slf4j
 @Service
@@ -47,9 +51,28 @@ public class DocumentService {
    private final CategorizationService categorizationService;
    private final AnomalyDetectionService anomalyDetectionService;
 
-   // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak
-   // membebani RAM
+   // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak membebani RAM
    private final String UPLOAD_DIR = "uploads/";
+
+   public List<AccountWithDocumentsResponse> getAccountsWithDocumentCount() {
+       return bankAccountRepository.getAccountsWithDocumentCount();
+   }
+
+   public List<DocumentListResponse> getDocumentsByAccountId(Long accountId) {
+
+       List<MutationDocument> docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
+       return docs.stream().map(d -> DocumentListResponse.builder()
+               .id(d.getId())
+               .fileName(d.getFileName())
+               .fileType(d.getFileType() != null ? d.getFileType().name() : null)
+               .status(d.getStatus() != null ? d.getStatus().name() : null)
+               .errorMessage(d.getErrorMessage())
+               .periodStart(d.getPeriodStart())
+               .periodEnd(d.getPeriodEnd())
+               .createdAt(d.getCreatedAt())
+               .build()
+       ).collect(Collectors.toList());
+   }
 
    public MutationDocument uploadAndRegisterDocument(UploadDocumentRequest request) {
       MultipartFile file = request.getFile();

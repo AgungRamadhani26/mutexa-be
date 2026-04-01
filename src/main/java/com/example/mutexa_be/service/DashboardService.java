@@ -20,8 +20,8 @@ public class DashboardService {
 
    private final BankTransactionRepository bankTransactionRepository;
 
-   public List<SummaryPerbulanResponse> getSummaryPerbulan() {
-      List<Object[]> rawSummaries = bankTransactionRepository.getMonthlySummary();
+   public List<SummaryPerbulanResponse> getSummaryPerbulan(Long documentId) {
+      List<Object[]> rawSummaries = bankTransactionRepository.getMonthlySummaryByDocumentId(documentId);
 
       return rawSummaries.stream().map(row -> {
          Integer year = ((Number) row[0]).intValue();
@@ -46,8 +46,8 @@ public class DashboardService {
       }).collect(Collectors.toList());
    }
 
-   public List<DetailTransaksiResponse> getDetailSemuaTransaksi() {
-      List<BankTransaction> transactions = bankTransactionRepository.findAllByOrderByTransactionDateAscIdAsc();
+   public List<DetailTransaksiResponse> getDetailSemuaTransaksi(Long documentId) {
+      List<BankTransaction> transactions = bankTransactionRepository.findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
             .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
