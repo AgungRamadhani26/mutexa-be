@@ -38,10 +38,10 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
          "    (SELECT TOP 1 b.balance FROM bank_transaction b " +
          "     WHERE YEAR(b.transaction_date) = YEAR(t.transaction_date) " +
          "     AND MONTH(b.transaction_date) = MONTH(t.transaction_date) " +
-         "     AND b.mutation_document_id = :documentId " +
+         "     AND b.document_id = :documentId " +
          "     ORDER BY b.transaction_date DESC, b.id DESC) AS saldoAkhir " +
          "FROM bank_transaction t " +
-         "WHERE t.mutation_document_id = :documentId " +
+         "WHERE t.document_id = :documentId " +
          "GROUP BY YEAR(t.transaction_date), MONTH(t.transaction_date) " +
          "ORDER BY YEAR(t.transaction_date) DESC, MONTH(t.transaction_date) DESC", nativeQuery = true)
    List<Object[]> getMonthlySummaryByDocumentId(Long documentId);

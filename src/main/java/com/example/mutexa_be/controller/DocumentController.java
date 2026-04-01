@@ -21,12 +21,22 @@ public class DocumentController {
 
    private final DocumentService documentService;
 
+   /**
+    * Endpoint Level 1: Mengambil daftar Rekening Bank.
+    * Tampilan awal (Level 1) di Frontend membutuhkan daftar rekening beserta
+    * total jumlah dokumen yang telah diupload untuk masing-masing rekening.
+    */
    @GetMapping("/by-account")
    public ResponseEntity<ApiResponse<List<AccountWithDocumentsResponse>>> getAccounts() {
        List<AccountWithDocumentsResponse> accounts = documentService.getAccountsWithDocumentCount();
        return ResponseUtil.ok(accounts, "Berhasil mengambil daftar rekening bank");
    }
 
+   /**
+    * Endpoint Level 2: Mengambil daftar Dokumen Mutasi per Rekening.
+    * Ketika user mengklik nama rekening, Frontend memanggil endpoint ini
+    * untuk menampilkan daftar riwayat upload (SUCCESS/FAILED) miliknya.
+    */
    @GetMapping("/by-account/{accountId}")
    public ResponseEntity<ApiResponse<List<DocumentListResponse>>> getDocumentsByAccount(@PathVariable Long accountId) {
        List<DocumentListResponse> documents = documentService.getDocumentsByAccountId(accountId);

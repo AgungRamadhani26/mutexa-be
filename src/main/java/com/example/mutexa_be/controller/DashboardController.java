@@ -30,12 +30,21 @@ public class DashboardController {
    private final DashboardService dashboardService;
    private final ExcelExportService excelExportService;
 
+   /**
+    * Endpoint untuk ringkasan transaksi per bulan.
+    * @param documentId Harus disertakan agar data yang dihitung HANYA berasal
+    *                   dari riwayat transaksi dokumen mutasi spesifik ini saja.
+    */
    @GetMapping("/summary-perbulan")
    public ResponseEntity<ApiResponse<List<SummaryPerbulanResponse>>> getSummaryPerbulan(@RequestParam Long documentId) {
       List<SummaryPerbulanResponse> data = dashboardService.getSummaryPerbulan(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data summary per bulan.");
    }
 
+   /**
+    * Endpoint untuk tabel rincian mutasi (list detail transaksi).
+    * @param documentId ID milik MutationDocument yang statusnya sudah SUCCESS.
+    */
    @GetMapping("/detail-transaksi")
    public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getDetailSemuaTransaksi(@RequestParam Long documentId) {
       List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
