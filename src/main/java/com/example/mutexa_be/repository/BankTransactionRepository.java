@@ -48,4 +48,7 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
    // Get ALL filtered by Document ID
    List<BankTransaction> findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(Long mutationDocumentId);
+
+   // Get Top 10 Credit Amount by Document ID
+   List<BankTransaction> findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(Long mutationDocumentId, com.example.mutexa_be.entity.enums.MutationType mutationType);
 }

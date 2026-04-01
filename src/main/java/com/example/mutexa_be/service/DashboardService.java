@@ -55,4 +55,26 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .build()).collect(Collectors.toList());
    }
+
+   public List<DetailTransaksiResponse> getTop10CreditAmount(Long documentId) {
+      List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
+            documentId, com.example.mutexa_be.entity.enums.MutationType.CR);
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .build()).collect(Collectors.toList());
+   }
+
+   public List<DetailTransaksiResponse> getTop10DebitAmount(Long documentId) {
+      List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
+            documentId, com.example.mutexa_be.entity.enums.MutationType.DB);
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .build()).collect(Collectors.toList());
+   }
 }

@@ -32,6 +32,7 @@ public class DashboardController {
 
    /**
     * Endpoint untuk ringkasan transaksi per bulan.
+    * 
     * @param documentId Harus disertakan agar data yang dihitung HANYA berasal
     *                   dari riwayat transaksi dokumen mutasi spesifik ini saja.
     */
@@ -43,12 +44,38 @@ public class DashboardController {
 
    /**
     * Endpoint untuk tabel rincian mutasi (list detail transaksi).
+    * 
     * @param documentId ID milik MutationDocument yang statusnya sudah SUCCESS.
     */
    @GetMapping("/detail-transaksi")
-   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getDetailSemuaTransaksi(@RequestParam Long documentId) {
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getDetailSemuaTransaksi(
+         @RequestParam Long documentId) {
       List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data detail transaksi.");
+   }
+
+   /**
+    * Endpoint untuk Top 10 Credit Amount.
+    * 
+    * @param documentId ID milik MutationDocument
+    */
+   @GetMapping("/top10-credit")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getTop10CreditAmount(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTop10CreditAmount(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data top 10 credit.");
+   }
+
+   /**
+    * Endpoint untuk Top 10 Debit Amount.
+    * 
+    * @param documentId ID milik MutationDocument
+    */
+   @GetMapping("/top10-debit")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getTop10DebitAmount(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTop10DebitAmount(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data top 10 debit.");
    }
 
    @GetMapping("/export-excel")
