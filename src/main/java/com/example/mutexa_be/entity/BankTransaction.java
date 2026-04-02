@@ -60,6 +60,10 @@ public class BankTransaction {
    @Column(name = "balance", precision = 19, scale = 4)
    private BigDecimal balance;
 
+   // Nama spesifik pengirim/penerima tanpa atribut teks sampah (misal: "AHSA JAYA METALINDO")
+   @Column(name = "counterparty_name")
+   private String counterpartyName;
+
    // Kategori analisis dari transaksi (misalnya INCOME, TAX, ADMIN, dll)
    @Enumerated(EnumType.STRING)
    @Column(name = "category", nullable = false)

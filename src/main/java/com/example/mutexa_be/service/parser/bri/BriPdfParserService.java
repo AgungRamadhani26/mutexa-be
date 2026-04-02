@@ -248,6 +248,7 @@ public class BriPdfParserService implements PdfParserService {
 
       // NORMALISASI MENGGUNAKAN SERVICE BARU
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
+      String cpName = transactionRefinementService.extractCounterpartyName(builder.rawDescription);
       TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
 
       // Base string pembentuk Hash anti duplikasi
@@ -270,6 +271,7 @@ public class BriPdfParserService implements PdfParserService {
             .transactionDate(builder.dateStr)
             .rawDescription(builder.rawDescription)
             .normalizedDescription(normalizedDesc)
+            .counterpartyName(cpName)
             .mutationType(finalType)
             .amount(finalAmount)
             .balance(valSaldo)

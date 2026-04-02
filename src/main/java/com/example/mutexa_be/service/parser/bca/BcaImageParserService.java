@@ -340,8 +340,24 @@ public class BcaImageParserService {
                   amount = new BigDecimal(amtStr.replaceAll("[^\\d]", "")).divide(new BigDecimal(100));
             }
 
-            if (rawDesc.length() < 3 && amount.compareTo(BigDecimal.ZERO) == 0)
-               continue;
+            // Kita tidak bisa import langsung TransactionRefinementService di Bca Image Parser ini karena circular / not injected yet
+            // Sebaiknya tidak usah panggil utilitas bila belum autowired. Wait, it IS autowired!
+            // Tapi karena metode private, better buat new implementation inline atau inject?
+            // "transactionRefinementService" is NOT declared in BcaImageParserService.java??
+            // Let's check BcaImageParserService... Wait, in line 52 it's CategorizationService, NOT TransactionRefinementService.
+            // Oh dear. I can inject it loosely, or use a regex here locally.
+            // Actually, I can just use a local regex!
+            String cpName = rawDesc;
+            java.util.regex.Matcher bcaM = java.util.regex.Pattern.compile("(PT\\.?|CV\\.?)\\s+([A-Z0-9 ]{3,30})").matcher(rawDesc.toUpperCase());
+            if (bcaM.find()) cpName = bcaM.group(0).trim();
+            else {
+               java.util.regex.Matcher bM = java.util.regex.Pattern.compile("(?:DARI|KE)\\s+([A-Z0-9\\.\\- ]+?)(?:\\s+[0-9]{10,}|$)").matcher(rawDesc.toUpperCase());
+               if (bM.find() && bM.group(1).trim().length()>3) cpName = bM.group(1).trim();
+               else {
+                  cpName = rawDesc.toUpperCase().replaceAll("TRANSFER DANA|MCM|PINBUK|WSID.*|\\b[A-Z0-9]{12,}\\b", "").replaceAll("[^A-Z0-9 ]", " ").trim();
+               }
+            }
+            if (cpName.length() > 30) cpName = cpName.substring(0, 30);
 
             BankTransaction tx = BankTransaction.builder()
                   .mutationDocument(document)
@@ -349,6 +365,7 @@ public class BcaImageParserService {
                   .transactionDate(txDate)
                   .rawDescription(rawDesc)
                   .normalizedDescription(rawDesc)
+                  .counterpartyName(cpName)
                   .mutationType(type)
                   .amount(amount)
                   .balance(balance)

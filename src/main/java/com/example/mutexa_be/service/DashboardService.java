@@ -13,6 +13,8 @@ import java.time.format.TextStyle;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import com.example.mutexa_be.dto.response.TopFreqResponse;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -76,5 +78,20 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .build()).collect(Collectors.toList());
+   }
+
+   // Fungsi untuk mengambil List hasil konversi Object[] menjadi DTO TopFreqResponse (Top 10 Credit Frequency)
+   public List<TopFreqResponse> getTop10CreditFreq(Long documentId) {
+      List<Object[]> rawFreqData = bankTransactionRepository.findTop10CreditFreqByDocumentId(documentId);
+      
+      // Mengubah setiap baris data mentah ke wujud Response Objek yang gampang dibaca Angular
+      return rawFreqData.stream().map(row -> {
+         String keterangan = row[0] != null ? row[0].toString() : "TANPA KETERANGAN"; // Kolom pertama: keterangan
+         Long frekuensi = row[1] != null ? ((Number) row[1]).longValue() : 0L;        // Kolom kedua: frekuensi COUNT()
+         return TopFreqResponse.builder()
+                 .keterangan(keterangan)
+                 .frekuensi(frekuensi)
+                 .build();
+      }).collect(Collectors.toList());
    }
 }

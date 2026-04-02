@@ -243,6 +243,18 @@ public class OllamaOcrService {
         
         String desc = data.getOrDefault("description", "OCR: Keterangan Tidak Terdeteksi").trim();
 
+        String cpName = desc;
+        java.util.regex.Matcher bcaM = java.util.regex.Pattern.compile("(PT\\.?|CV\\.?)\\s+([A-Z0-9 ]{3,30})").matcher(desc.toUpperCase());
+        if (bcaM.find()) cpName = bcaM.group(0).trim();
+        else {
+            java.util.regex.Matcher bM = java.util.regex.Pattern.compile("(?:DARI|KE)\\s+([A-Z0-9\\.\\- ]+?)(?:\\s+[0-9]{10,}|$)").matcher(desc.toUpperCase());
+            if (bM.find() && bM.group(1).trim().length()>3) cpName = bM.group(1).trim();
+            else {
+                cpName = desc.toUpperCase().replaceAll("TRANSFER DANA|MCM|PINBUK|WSID.*|\\b[A-Z0-9]{12,}\\b", "").replaceAll("[^A-Z0-9 ]", " ").trim();
+            }
+        }
+        if (cpName.length() > 30) cpName = cpName.substring(0, 30);
+
         // 4. Membangun objek yang siap disimpan di Database
         BankTransaction tx = BankTransaction.builder()
                 .mutationDocument(document)
@@ -250,6 +262,7 @@ public class OllamaOcrService {
                 .transactionDate(txDate)
                 .rawDescription(desc) // Catat keterangan asli
                 .normalizedDescription(desc) // Untuk fase 6 (Normalization), smentara kita samakan dgn RAW
+                .counterpartyName(cpName)
                 .mutationType(type)
                 .amount(amount)
                 .balance(balance)

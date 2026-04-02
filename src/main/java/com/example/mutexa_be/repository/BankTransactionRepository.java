@@ -51,4 +51,16 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
    // Get Top 10 Credit Amount by Document ID
    List<BankTransaction> findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(Long mutationDocumentId, com.example.mutexa_be.entity.enums.MutationType mutationType);
+
+   // Menghitung jumlah perulangan (frekuensi) terbanyak dari suatu keterangan mutasi (Credit)
+   // Mengelompokkan MURNI berdasarkan nama pengirim/penerima (counterparty_name) agar perhitungan frekuensi tidak bocor.
+   @Query(value = "SELECT TOP 10 " +
+         "    CAST(COALESCE(t.counterparty_name, t.normalized_description, t.raw_description) AS VARCHAR(MAX)) AS keterangan, " +
+         "    COUNT(t.id) AS frekuensi " +
+         "FROM bank_transaction t " +
+         "WHERE t.document_id = :documentId AND t.mutation_type = 'CR' " +
+         "GROUP BY CAST(COALESCE(t.counterparty_name, t.normalized_description, t.raw_description) AS VARCHAR(MAX)) " +
+         "HAVING COUNT(t.id) >= 2 " +
+         "ORDER BY COUNT(t.id) DESC", nativeQuery = true)
+   List<Object[]> findTop10CreditFreqByDocumentId(Long documentId);
 }
