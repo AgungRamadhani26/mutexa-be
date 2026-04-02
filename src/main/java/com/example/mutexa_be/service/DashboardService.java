@@ -51,10 +51,12 @@ public class DashboardService {
    public List<DetailTransaksiResponse> getDetailSemuaTransaksi(Long documentId) {
       List<BankTransaction> transactions = bankTransactionRepository.findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
             .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
+            .isExcluded(tx.getIsExcluded())
             .build()).collect(Collectors.toList());
    }
 
@@ -62,10 +64,12 @@ public class DashboardService {
       List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
             documentId, com.example.mutexa_be.entity.enums.MutationType.CR);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
             .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
+            .isExcluded(tx.getIsExcluded())
             .build()).collect(Collectors.toList());
    }
 
@@ -73,10 +77,12 @@ public class DashboardService {
       List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
             documentId, com.example.mutexa_be.entity.enums.MutationType.DB);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
             .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
+            .isExcluded(tx.getIsExcluded())
             .build()).collect(Collectors.toList());
    }
 
@@ -106,5 +112,12 @@ public class DashboardService {
                  .frekuensi(frekuensi)
                  .build();
       }).collect(Collectors.toList());
+   }
+
+   public void toggleExclude(Long transactionId) {
+       BankTransaction tx = bankTransactionRepository.findById(transactionId)
+               .orElseThrow(() -> new IllegalArgumentException("Transaksi tidak ditemukan"));
+       tx.setIsExcluded(tx.getIsExcluded() == null ? true : !tx.getIsExcluded());
+       bankTransactionRepository.save(tx);
    }
 }

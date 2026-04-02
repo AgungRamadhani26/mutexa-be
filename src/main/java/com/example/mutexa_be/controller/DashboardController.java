@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -105,6 +106,10 @@ public class DashboardController {
    @GetMapping("/export-excel")
    public ResponseEntity<InputStreamResource> downloadExcel(@RequestParam Long documentId) throws IOException {
       List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
+      
+      // Filter out excluded items from the excel export
+      data = data.stream().filter(tx -> tx.getIsExcluded() == null || !tx.getIsExcluded()).toList();
+
       ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data);
 
       HttpHeaders headers = new HttpHeaders();
@@ -115,5 +120,11 @@ public class DashboardController {
             .headers(headers)
             .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
             .body(new InputStreamResource(in));
+   }
+
+   @PostMapping("/toggle-exclude/{id}")
+   public ResponseEntity<ApiResponse<String>> toggleExclude(@org.springframework.web.bind.annotation.PathVariable Long id) {
+      dashboardService.toggleExclude(id);
+      return ResponseUtil.ok("Success toggle", "Berhasil mengubah status exclude transaksi.");
    }
 }
