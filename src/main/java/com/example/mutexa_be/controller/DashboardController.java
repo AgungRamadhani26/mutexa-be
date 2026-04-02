@@ -90,6 +90,18 @@ public class DashboardController {
       return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi credit top 10.");
    }
 
+   /**
+    * Endpoint untuk Top 10 Debit Frequency.
+    *
+    * @param documentId ID milik MutationDocument
+    */
+   @GetMapping("/top10-debit-freq")
+   public ResponseEntity<ApiResponse<List<com.example.mutexa_be.dto.response.TopFreqResponse>>> getTop10DebitFreq(
+         @RequestParam Long documentId) {
+      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService.getTop10DebitFreq(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi debit top 10.");
+   }
+
    @GetMapping("/export-excel")
    public ResponseEntity<InputStreamResource> downloadExcel(@RequestParam Long documentId) throws IOException {
       List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);

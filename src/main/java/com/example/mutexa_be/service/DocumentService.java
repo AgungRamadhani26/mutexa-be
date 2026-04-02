@@ -59,7 +59,6 @@ public class DocumentService {
    }
 
    public List<DocumentListResponse> getDocumentsByAccountId(Long accountId) {
-
        List<MutationDocument> docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
        return docs.stream().map(d -> DocumentListResponse.builder()
                .id(d.getId())
@@ -96,11 +95,9 @@ public class DocumentService {
          // 2. Simpan fisik file ke storage lokal folder `uploads/`
          Path uploadPath = Paths.get(UPLOAD_DIR);
          if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath); // Create folder kalau belum ada
+            Files.createDirectories(uploadPath);
          }
 
-         // Nama file unik (mengurangi risiko bentrok jika ada file bernama sama diupload
-         // bersamaan)
          String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
          Path filePath = uploadPath.resolve(uniqueFileName);
          Files.copy(file.getInputStream(), filePath);
@@ -109,14 +106,14 @@ public class DocumentService {
          DocumentType detectedType = detectDocumentType(filePath.toFile(), file.getContentType(),
                file.getOriginalFilename());
 
-         // 4. Rekam ke Database dengan status awal PARSING (langsung kita proses)
+         // 4. Rekam ke Database dengan status awal PARSING
          MutationDocument document = MutationDocument.builder()
                .bankAccount(account)
                .fileName(file.getOriginalFilename())
                .fileType(detectedType)
                .status(DocumentStatus.PARSING)
                .filePath(filePath.toString())
-               .periodStart(LocalDate.now()) // Default dummy, bisa di-update nanti jika kita parse dari PDF header
+               .periodStart(LocalDate.now())
                .periodEnd(LocalDate.now())
                .build();
 
@@ -150,7 +147,6 @@ public class DocumentService {
                LocalDate maxDate = null;
 
                for (BankTransaction tx : extractedTxs) {
-                  // Capping PeriodStart dan PeriodEnd dari date actual transaction
                   if (tx.getTransactionDate() != null) {
                      if (minDate == null || tx.getTransactionDate().isBefore(minDate))
                         minDate = tx.getTransactionDate();
@@ -216,7 +212,6 @@ public class DocumentService {
                   mutationDocumentRepository.save(document);
                }
             } else {
-               // Default fall-back untuk bank lain yang IMAGE_SCAN selain BCA
                log.warn("Bank {} belum didukung untuk proses OCR Image Scan. Ditandai FAILED.", request.getBankName());
                document.setStatus(DocumentStatus.FAILED);
                document.setErrorMessage("Parser OCR Scanner untuk bank " + request.getBankName() + " belum tersedia.");
@@ -236,24 +231,18 @@ public class DocumentService {
     * Memeriksa apakah ini PDF murni (ada teksnya) atau hanya hasil scan / gambar.
     */
    private DocumentType detectDocumentType(File savedFile, String contentType, String originalFilename) {
-      // Jika format yang di-upload dari awal adalah JPEG/PNG, otomatis itu adalah
-      // IMAGE_SCAN
       if (contentType != null && (contentType.startsWith("image/") || originalFilename.toLowerCase().endsWith(".jpg")
             || originalFilename.toLowerCase().endsWith(".png"))) {
          return DocumentType.IMAGE_SCAN;
       }
 
-      // Jika itu PDF, kita gunakan PDFBox seperti test sebelumnya untuk "mengintip"
-      // apakah ada teks
       if (originalFilename != null && originalFilename.toLowerCase().endsWith(".pdf")) {
          try (PDDocument document = Loader.loadPDF(savedFile)) {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setStartPage(1);
-            stripper.setEndPage(1); // Cek halaman 1 saja agar efisien/cepat
+            stripper.setEndPage(1);
             String text = stripper.getText(document);
 
-            // Jika teks hasil pelepasan dari PDF kosong / hanya spasi, berarti ia adalah
-            // Gambar dalam file PDF
             if (text == null || text.trim().isEmpty()) {
                return DocumentType.IMAGE_SCAN;
             } else {
@@ -265,7 +254,6 @@ public class DocumentService {
          }
       }
 
-      // Secara default (fallback)
       return DocumentType.IMAGE_SCAN;
    }
 }

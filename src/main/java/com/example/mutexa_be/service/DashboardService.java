@@ -94,4 +94,17 @@ public class DashboardService {
                  .build();
       }).collect(Collectors.toList());
    }
+   // Fungsi untuk mengambil data Top 10 Debit Frequency
+   public List<TopFreqResponse> getTop10DebitFreq(Long documentId) {
+      List<Object[]> rawFreqData = bankTransactionRepository.findTop10DebitFreqByDocumentId(documentId);
+
+      return rawFreqData.stream().map(row -> {
+         String keterangan = row[0] != null ? row[0].toString() : "TANPA KETERANGAN";
+         Long frekuensi = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+         return TopFreqResponse.builder()
+                 .keterangan(keterangan)
+                 .frekuensi(frekuensi)
+                 .build();
+      }).collect(Collectors.toList());
+   }
 }
