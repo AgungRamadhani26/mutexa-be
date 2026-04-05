@@ -34,3 +34,4 @@ build/
 
 ### Mutexa Uploads ###
 uploads/
+src/main/resources/application.properties

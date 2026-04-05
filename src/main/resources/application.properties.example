@@ -1,0 +1,32 @@
+spring.application.name=mutexa-be
+
+# Datasource
+spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=mutexa;encrypt=true;trustServerCertificate=true
+spring.datasource.username=YOUR_USERNAME
+spring.datasource.password=YOUR_PASSWORD
+spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.SQLServerDialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# Server
+server.port=9091
+
+# Konfigurasi Upload File
+spring.servlet.multipart.enabled=true
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+
+# Konfigurasi AI Categorization
+# Pilih provider yang diinginkan: gemini atau ollama
+ai.provider=ollama
+
+# Jika pakai Gemini (Dapatkan gratis di https://aistudio.google.com/app/apikey)
+ai.gemini.api-key=YOUR_GEMINI_API_KEY_HERE
+
+# Jika pakai Ollama (Berjalan lokal tanpa internet)
+ai.ollama.url=http://localhost:11434/api/generate
+ai.ollama.model=llama3.2
