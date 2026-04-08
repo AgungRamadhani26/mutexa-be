@@ -12,6 +12,7 @@ import com.example.mutexa_be.repository.MutationDocumentRepository;
 import com.example.mutexa_be.service.parser.bri.BriPdfParserService;
 import com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService;
 import com.example.mutexa_be.service.parser.uob.UobPdfParserService;
+import com.example.mutexa_be.service.parser.bca.BcaPdfParserService;
 import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
 import com.example.mutexa_be.service.CategorizationService;
 import com.example.mutexa_be.service.AnomalyDetectionService;
@@ -47,6 +48,7 @@ public class DocumentService {
    private final BriPdfParserService briPdfParserService;
    private final MandiriPdfParserService mandiriPdfParserService;
    private final UobPdfParserService uobPdfParserService;
+   private final BcaPdfParserService bcaPdfParserService;
    private final BcaImageParserService bcaImageParserService;
    private final CategorizationService categorizationService;
    private final AnomalyDetectionService anomalyDetectionService;
@@ -132,6 +134,8 @@ public class DocumentService {
                   extractedTxs = mandiriPdfParserService.parse(document, filePath.toString());
                } else if (bankName.equals("UOB")) {
                   extractedTxs = uobPdfParserService.parse(document, filePath.toString());
+               } else if (bankName.equals("BCA")) {
+                  extractedTxs = bcaPdfParserService.parse(document, filePath.toString());
                } else {
                   log.warn("Bank {} belum ada Regex Parser PDF-nya. Ditandai FAILED.", bankName);
                   document.setStatus(DocumentStatus.FAILED);

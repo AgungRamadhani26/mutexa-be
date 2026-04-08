@@ -214,7 +214,7 @@ public class UobPdfParserService implements PdfParserService {
       }
 
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
-      String cpName = transactionRefinementService.extractCounterpartyName(builder.rawDescription);
+      String cpName = transactionRefinementService.extractCounterpartyName("UOB", builder.rawDescription);
       TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
 
       String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
