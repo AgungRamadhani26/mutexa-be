@@ -170,7 +170,7 @@ public class MandiriPdfParserService implements PdfParserService {
       }
 
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
-      String cpName = transactionRefinementService.extractCounterpartyName("MANDIRI", builder.rawDescription);
+      String cpName = transactionRefinementService.extractCounterpartyName("MANDIRI", builder.rawDescription, finalType == MutationType.CR);
       TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
 
       String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;

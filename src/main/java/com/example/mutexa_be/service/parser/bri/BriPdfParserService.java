@@ -248,7 +248,7 @@ public class BriPdfParserService implements PdfParserService {
 
       // NORMALISASI MENGGUNAKAN SERVICE BARU
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
-      String cpName = transactionRefinementService.extractCounterpartyName("BRI", builder.rawDescription);
+      String cpName = transactionRefinementService.extractCounterpartyName("BRI", builder.rawDescription, finalType == MutationType.CR);
       TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
 
       // Base string pembentuk Hash anti duplikasi

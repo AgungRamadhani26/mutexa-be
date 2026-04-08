@@ -33,17 +33,17 @@ public class TransactionRefinementService {
     * Overload BARU: Menerima bankName untuk routing ke extractor bank-specific.
     * Ini adalah entry point utama yang dipanggil dari masing-masing parser.
     */
-   public String extractCounterpartyName(String bankName, String rawDescription) {
+   public String extractCounterpartyName(String bankName, String rawDescription, boolean isCredit) {
       if (rawDescription == null || rawDescription.trim().isEmpty()) return null;
       
-      if (bankName == null) return extractCounterpartyName(rawDescription);
+      if (bankName == null) return extractCounterpartyName(rawDescription, isCredit);
 
       switch (bankName.toUpperCase()) {
-         case "BRI":     return extractBri(rawDescription);
-         case "MANDIRI": return extractMandiri(rawDescription);
-         case "UOB":     return extractUob(rawDescription);
-         case "BCA":     return extractBca(rawDescription);
-         default:        return extractCounterpartyName(rawDescription); // generic fallback
+         case "BRI":     return extractBri(rawDescription, isCredit);
+         case "MANDIRI": return extractMandiri(rawDescription, isCredit);
+         case "UOB":     return extractUob(rawDescription, isCredit);
+         case "BCA":     return extractBca(rawDescription, isCredit);
+         default:        return extractCounterpartyName(rawDescription, isCredit); // generic fallback
       }
    }
 
@@ -51,7 +51,7 @@ public class TransactionRefinementService {
     * Method lama (backward compatible) — dipakai sebagai generic fallback
     * untuk bank yang belum punya extractor khusus (BNI, CIMB, OCBC dll).
     */
-   public String extractCounterpartyName(String rawDescription) {
+   public String extractCounterpartyName(String rawDescription, boolean isCredit) {
       if (rawDescription == null || rawDescription.trim().isEmpty()) return null;
       String text = normalizeText(rawDescription);
 
@@ -79,7 +79,7 @@ public class TransactionRefinementService {
     * 8. QRIS/QRISRNS → system
     * 9. Biaya Administrasi / Biaya Bulanan ATM → system
     */
-   private String extractBri(String rawDescription) {
+   private String extractBri(String rawDescription, boolean isCredit) {
       String text = normalizeText(rawDescription);
 
       // 1. Transfer BI-Fast ke/dari — nama ada setelah dash terakhir
@@ -90,20 +90,24 @@ public class TransactionRefinementService {
          return truncate(mBiFast.group(1).trim());
       }
 
-      // 2. IBIZ ... TO NAMA — nama ada setelah "TO"
+      // 2. IBIZ ... TO NAMA — Format dua pihak
       //    "IBIZ AMBE MAJU BERS TO NIA YUSNIA"
-      Matcher mIbiz = Pattern.compile("(?:IBIZ|IBBIZ) .+? TO ([A-Z][A-Z ]+?)(?:\\s+\\d|$)")
+      Matcher mIbiz = Pattern.compile("(?:IBIZ|IBBIZ) (.+?) TO ([A-Z][A-Z ]+?)(?:\\s+\\d|$)")
             .matcher(text);
       if (mIbiz.find()) {
-         return truncate(mIbiz.group(1).trim());
+         String sender = mIbiz.group(1).trim();
+         String receiver = mIbiz.group(2).trim();
+         return truncate(isCredit ? sender : receiver);
       }
 
-      // 3. NBMB PENGIRIM TO PENERIMA — pengirim ada SEBELUM "TO"
+      // 3. NBMB PENGIRIM TO PENERIMA — Format dua pihak
       //    "NBMB RURIN PUTRI RI TO AMBE MAJU BERSAMA"
-      Matcher mNbmb = Pattern.compile("NBMB ([A-Z][A-Z ]+?) TO ")
+      Matcher mNbmb = Pattern.compile("NBMB ([A-Z][A-Z ]+?) TO ([A-Z][A-Z ]+?)(?:\\s+\\d|$)")
             .matcher(text);
       if (mNbmb.find()) {
-         return truncate(mNbmb.group(1).trim());
+         String sender = mNbmb.group(1).trim();
+         String receiver = mNbmb.group(2).trim();
+         return truncate(isCredit ? sender : receiver);
       }
 
       // 4. Transfer Ke NAMA via BRImo
@@ -152,7 +156,7 @@ public class TransactionRefinementService {
     * 5. "Setor tunai NAMA 01-NNNNN"               → nama setelah "setor tunai"
     * 6. "PINBUK ... MCM InhouseTrf DARI NAMA"     → nama setelah DARI
     */
-   private String extractMandiri(String rawDescription) {
+   private String extractMandiri(String rawDescription, boolean isCredit) {
       String text = normalizeText(rawDescription);
 
       // 1 & 2. MCM InhouseTrf KE/DARI NAMA ... Transfer Fee
@@ -212,7 +216,7 @@ public class TransactionRefinementService {
     * 5. "Withholding Tax Dr"                        → system
     * 6. "Cash BN" / "Cash 000000NNNN"               → system
     */
-   private String extractUob(String rawDescription) {
+   private String extractUob(String rawDescription, boolean isCredit) {
       String text = normalizeText(rawDescription);
 
       // 1. "PT. NAMA PERUSAHAAN" di mana saja dalam teks
@@ -252,7 +256,7 @@ public class TransactionRefinementService {
     * 4. "DARI/KEPADA NAMA"                                           → nama setelah keyword
     * 5. System: INTEREST CREDIT, OD INT CHARGE, BIAYA ADM, dsb.
     */
-   private String extractBca(String rawDescription) {
+   private String extractBca(String rawDescription, boolean isCredit) {
       String text = normalizeText(rawDescription);
 
       // 1. CENAIDJA/NAMA PT... 
@@ -369,9 +373,16 @@ public class TransactionRefinementService {
       return cleaned;
    }
 
-   /** Potong string ke max 255 chars (batas kolom DB) */
+   /** Potong string ke max 255 chars (batas kolom DB) dan bersihkan prefix/suffix PT/CV */
    private String truncate(String s) {
       if (s == null) return "UNKNOWN";
+      
+      // Standarisasi: Hapus PT/CV di awal atau di akhir agar grouping konsisten
+      s = s.replaceAll("^(?:PT|CV|TBK)\\.?\\s+", ""); // Hapus prefix (contoh: "PT. NAMA")
+      s = s.replaceAll("\\s+(?:PT|CV|TBK)\\.?$", ""); // Hapus suffix (contoh: "NAMA CV")
+      s = s.trim();
+      
+      if (s.isEmpty()) return "UNKNOWN";
       if (s.length() > 255) return s.substring(0, 252) + "...";
       return s;
    }

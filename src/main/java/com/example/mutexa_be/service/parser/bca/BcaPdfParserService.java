@@ -178,7 +178,7 @@ public class BcaPdfParserService implements PdfParserService {
 
         String rawDesc = builder.description.trim();
         String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
-        String cpName = transactionRefinementService.extractCounterpartyName("BCA", rawDesc);
+        String cpName = transactionRefinementService.extractCounterpartyName("BCA", rawDesc, builder.type == MutationType.CR);
         
         // Safety guard: Truncate counterpartyName to 255 chars (DB limit)
         if (cpName != null && cpName.length() > 255) {
