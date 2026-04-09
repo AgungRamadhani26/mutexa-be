@@ -21,7 +21,6 @@ public class TransactionRefinementService {
       }
       String normalized = rawDescription.replaceAll("[\\r\\n]+", " ");
       normalized = normalized.replaceAll("\\s{2,}", " ");
-      normalized = normalized.replaceAll("\\b\\d{10,}\\b", " ");
       return normalized.trim();
    }
 
