@@ -115,11 +115,24 @@ public class DashboardController {
    }
 
    @GetMapping("/export-excel")
-   public ResponseEntity<InputStreamResource> downloadExcel(@RequestParam Long documentId) throws IOException {
+   public ResponseEntity<InputStreamResource> downloadExcel(
+         @RequestParam Long documentId,
+         @RequestParam(required = false) String month,
+         @RequestParam(required = false) String flag) throws IOException {
       List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
       
       // Filter out excluded items from the excel export
       data = data.stream().filter(tx -> tx.getIsExcluded() == null || !tx.getIsExcluded()).toList();
+
+      // Apply Month Filter
+      if (month != null && !month.trim().isEmpty() && !month.equals("ALL")) {
+          data = data.stream().filter(tx -> tx.getTanggal() != null && tx.getTanggal().startsWith(month)).toList();
+      }
+
+      // Apply Flag Filter 
+      if (flag != null && !flag.trim().isEmpty() && !flag.equals("ALL")) {
+          data = data.stream().filter(tx -> tx.getFlag() != null && tx.getFlag().equalsIgnoreCase(flag)).toList();
+      }
 
       ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data);
 
