@@ -2,6 +2,7 @@ package com.example.mutexa_be.controller;
 
 import com.example.mutexa_be.base.ApiResponse;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
+import com.example.mutexa_be.dto.response.RingkasanSaldoResponse;
 import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
 import com.example.mutexa_be.service.DashboardService;
 import com.example.mutexa_be.service.ExcelExportService;
@@ -41,6 +42,16 @@ public class DashboardController {
    public ResponseEntity<ApiResponse<List<SummaryPerbulanResponse>>> getSummaryPerbulan(@RequestParam Long documentId) {
       List<SummaryPerbulanResponse> data = dashboardService.getSummaryPerbulan(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data summary per bulan.");
+   }
+
+   /**
+    * Endpoint untuk ringkasan saldo & arus kas (total dan rata-rata credit/debit).
+    * Exclude-aware: transaksi yang di-exclude tidak dihitung.
+    */
+   @GetMapping("/ringkasan-saldo")
+   public ResponseEntity<ApiResponse<RingkasanSaldoResponse>> getRingkasanSaldo(@RequestParam Long documentId) {
+      RingkasanSaldoResponse data = dashboardService.getRingkasanSaldo(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data ringkasan saldo.");
    }
 
    /**

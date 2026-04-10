@@ -24,7 +24,7 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
          "     ORDER BY b.transaction_date DESC, b.id DESC) AS saldoAkhir " +
          "FROM bank_transaction t " +
          "GROUP BY YEAR(t.transaction_date), MONTH(t.transaction_date) " +
-         "ORDER BY YEAR(t.transaction_date) DESC, MONTH(t.transaction_date) DESC", nativeQuery = true)
+         "ORDER BY YEAR(t.transaction_date) ASC, MONTH(t.transaction_date) ASC", nativeQuery = true)
    List<Object[]> getMonthlySummary();
 
    // Get Monthly Summary filtered by Document ID
@@ -43,7 +43,7 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
          "FROM bank_transaction t " +
          "WHERE t.document_id = :documentId " +
          "GROUP BY YEAR(t.transaction_date), MONTH(t.transaction_date) " +
-         "ORDER BY YEAR(t.transaction_date) DESC, MONTH(t.transaction_date) DESC", nativeQuery = true)
+         "ORDER BY YEAR(t.transaction_date) ASC, MONTH(t.transaction_date) ASC", nativeQuery = true)
    List<Object[]> getMonthlySummaryByDocumentId(Long documentId);
 
    // Get ALL filtered by Document ID
@@ -74,4 +74,13 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
          "HAVING COUNT(t.id) >= 2 " +
          "ORDER BY COUNT(t.id) DESC", nativeQuery = true)
    List<Object[]> findTop10DebitFreqByDocumentId(Long documentId);
+
+   // Ringkasan Saldo & Arus Kas: total dan rata-rata credit/debit, exclude-aware
+   @Query(value = "SELECT " +
+         "    SUM(CASE WHEN t.mutation_type = 'CR' THEN t.amount ELSE 0 END) AS totalCredit, " +
+         "    SUM(CASE WHEN t.mutation_type = 'DB' THEN t.amount ELSE 0 END) AS totalDebit, " +
+         "    COUNT(DISTINCT CAST(YEAR(t.transaction_date) AS VARCHAR) + '-' + CAST(MONTH(t.transaction_date) AS VARCHAR)) AS jumlahBulan " +
+         "FROM bank_transaction t " +
+         "WHERE t.document_id = :documentId", nativeQuery = true)
+   List<Object[]> getRingkasanSaldoByDocumentId(Long documentId);
 }

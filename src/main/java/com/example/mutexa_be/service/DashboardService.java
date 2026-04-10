@@ -1,6 +1,7 @@
 package com.example.mutexa_be.service;
 
 import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
+import com.example.mutexa_be.dto.response.RingkasanSaldoResponse;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
 import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.repository.BankTransactionRepository;
@@ -46,6 +47,40 @@ public class DashboardService {
                .saldoAkhir(saldoAkhir)
                .build();
       }).collect(Collectors.toList());
+   }
+
+   public RingkasanSaldoResponse getRingkasanSaldo(Long documentId) {
+      List<Object[]> rows = bankTransactionRepository.getRingkasanSaldoByDocumentId(documentId);
+
+      if (rows.isEmpty() || rows.get(0) == null) {
+         return RingkasanSaldoResponse.builder()
+               .totalCredit(BigDecimal.ZERO)
+               .totalDebit(BigDecimal.ZERO)
+               .avgCredit(BigDecimal.ZERO)
+               .avgDebit(BigDecimal.ZERO)
+               .jumlahBulan(0)
+               .build();
+      }
+
+      Object[] row = rows.get(0);
+      BigDecimal totalCredit = row[0] != null ? new BigDecimal(row[0].toString()) : BigDecimal.ZERO;
+      BigDecimal totalDebit = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
+      int jumlahBulan = row[2] != null ? ((Number) row[2]).intValue() : 1;
+
+      BigDecimal avgCredit = jumlahBulan > 0
+            ? totalCredit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
+            : BigDecimal.ZERO;
+      BigDecimal avgDebit = jumlahBulan > 0
+            ? totalDebit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
+            : BigDecimal.ZERO;
+
+      return RingkasanSaldoResponse.builder()
+            .totalCredit(totalCredit)
+            .totalDebit(totalDebit)
+            .avgCredit(avgCredit)
+            .avgDebit(avgDebit)
+            .jumlahBulan(jumlahBulan)
+            .build();
    }
 
    public List<DetailTransaksiResponse> getDetailSemuaTransaksi(Long documentId) {
