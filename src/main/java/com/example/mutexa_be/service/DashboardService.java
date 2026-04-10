@@ -10,12 +10,15 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Month;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import com.example.mutexa_be.dto.response.TopFreqResponse;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,27 +55,80 @@ public class DashboardService {
    public RingkasanSaldoResponse getRingkasanSaldo(Long documentId) {
       List<Object[]> rows = bankTransactionRepository.getRingkasanSaldoByDocumentId(documentId);
 
-      if (rows.isEmpty() || rows.get(0) == null) {
-         return RingkasanSaldoResponse.builder()
-               .totalCredit(BigDecimal.ZERO)
-               .totalDebit(BigDecimal.ZERO)
-               .avgCredit(BigDecimal.ZERO)
-               .avgDebit(BigDecimal.ZERO)
-               .jumlahBulan(0)
-               .build();
+      BigDecimal totalCredit = BigDecimal.ZERO;
+      BigDecimal totalDebit = BigDecimal.ZERO;
+      BigDecimal avgCredit = BigDecimal.ZERO;
+      BigDecimal avgDebit = BigDecimal.ZERO;
+      int jumlahBulan = 0;
+
+      if (!rows.isEmpty() && rows.get(0) != null) {
+         Object[] row = rows.get(0);
+         totalCredit = row[0] != null ? new BigDecimal(row[0].toString()) : BigDecimal.ZERO;
+         totalDebit = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
+         jumlahBulan = row[2] != null ? ((Number) row[2]).intValue() : 1;
+
+         avgCredit = jumlahBulan > 0
+               ? totalCredit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
+               : BigDecimal.ZERO;
+         avgDebit = jumlahBulan > 0
+               ? totalDebit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
+               : BigDecimal.ZERO;
       }
 
-      Object[] row = rows.get(0);
-      BigDecimal totalCredit = row[0] != null ? new BigDecimal(row[0].toString()) : BigDecimal.ZERO;
-      BigDecimal totalDebit = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
-      int jumlahBulan = row[2] != null ? ((Number) row[2]).intValue() : 1;
+      // Hitung Average Daily Balance (ADB)
+      BigDecimal avgDailyBalance = BigDecimal.ZERO;
+      List<BankTransaction> txs = bankTransactionRepository.findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
 
-      BigDecimal avgCredit = jumlahBulan > 0
-            ? totalCredit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-      BigDecimal avgDebit = jumlahBulan > 0
-            ? totalDebit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
+      if (!txs.isEmpty()) {
+         // Tentukan rentang kalender: 1st of first month s/d End of last month
+         LocalDate firstTxDate = txs.get(0).getTransactionDate();
+         LocalDate lastTxDate = txs.get(txs.size() - 1).getTransactionDate();
+         
+         LocalDate startDate = YearMonth.from(firstTxDate).atDay(1);
+         LocalDate endDate = YearMonth.from(lastTxDate).atEndOfMonth();
+
+         // Hitung saldo awal (Opening Balance) persis sebelum transaksi pertama dieksekusi
+         BankTransaction firstTx = txs.get(0);
+         BigDecimal openingBalance = firstTx.getBalance() != null ? firstTx.getBalance() : BigDecimal.ZERO;
+         if (firstTx.getBalance() != null && firstTx.getAmount() != null) {
+             if (firstTx.getMutationType() == com.example.mutexa_be.entity.enums.MutationType.CR) {
+                 openingBalance = firstTx.getBalance().subtract(firstTx.getAmount());
+             } else {
+                 openingBalance = firstTx.getBalance().add(firstTx.getAmount());
+             }
+         }
+
+         // Map berisi tanggal -> Saldo Terakhir pada tanggal tersebut
+         Map<LocalDate, BigDecimal> dailyBalances = new HashMap<>();
+         for (BankTransaction tx : txs) {
+             if (tx.getBalance() != null) {
+                 dailyBalances.put(tx.getTransactionDate(), tx.getBalance());
+             }
+         }
+
+         BigDecimal runningSum = BigDecimal.ZERO;
+         long totalDays = 0;
+         BigDecimal currentBalance = openingBalance;
+
+         // Looping per hari secara berurutan
+         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+             if (date.isBefore(firstTxDate)) {
+                 // Belum ada transaksi, pakai saldo awal
+             } else {
+                 // Jika ada record saldo di tanggal tersebut, update currentBalance
+                 if (dailyBalances.containsKey(date)) {
+                     currentBalance = dailyBalances.get(date);
+                 }
+                 // Jika tidak ada di map, currentBalance akan menggunakan nilai hari sebelumnya (gap-fill)
+             }
+             runningSum = runningSum.add(currentBalance);
+             totalDays++;
+         }
+
+         if (totalDays > 0) {
+             avgDailyBalance = runningSum.divide(BigDecimal.valueOf(totalDays), 2, java.math.RoundingMode.HALF_UP);
+         }
+      }
 
       return RingkasanSaldoResponse.builder()
             .totalCredit(totalCredit)
@@ -80,6 +136,7 @@ public class DashboardService {
             .avgCredit(avgCredit)
             .avgDebit(avgDebit)
             .jumlahBulan(jumlahBulan)
+            .avgDailyBalance(avgDailyBalance)
             .build();
    }
 

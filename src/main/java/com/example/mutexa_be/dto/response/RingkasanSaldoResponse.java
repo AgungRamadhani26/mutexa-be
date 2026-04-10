@@ -17,4 +17,5 @@ public class RingkasanSaldoResponse {
    private BigDecimal avgCredit;
    private BigDecimal avgDebit;
    private Integer jumlahBulan; // berapa bulan data yang dihitung
+   private BigDecimal avgDailyBalance;
 }

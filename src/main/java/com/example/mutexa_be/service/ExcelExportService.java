@@ -14,7 +14,7 @@ import java.util.List;
 public class ExcelExportService {
 
    public ByteArrayInputStream exportDetailTransaksiToExcel(List<DetailTransaksiResponse> data) throws IOException {
-      String[] columns = { "Tanggal", "Keterangan", "Flag", "Jumlah" };
+      String[] columns = { "Tanggal", "Keterangan", "Flag", "Debit", "Kredit" };
 
       try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
          Sheet sheet = workbook.createSheet("Detail Transaksi");
@@ -89,13 +89,26 @@ public class ExcelExportService {
             flagCell.setCellValue(tx.getFlag() != null ? tx.getFlag() : "-");
             flagCell.setCellStyle(dataCellStyle);
 
-            Cell amountCell = row.createCell(3);
+            Cell debitCell = row.createCell(3);
+            Cell creditCell = row.createCell(4);
+            debitCell.setCellStyle(numberCellStyle);
+            creditCell.setCellStyle(numberCellStyle);
+
             if (tx.getJumlah() != null) {
-               amountCell.setCellValue(tx.getJumlah().doubleValue());
+               if ("DB".equalsIgnoreCase(tx.getFlag())) {
+                  debitCell.setCellValue(tx.getJumlah().doubleValue());
+                  creditCell.setCellValue("");
+               } else if ("CR".equalsIgnoreCase(tx.getFlag())) {
+                  debitCell.setCellValue("");
+                  creditCell.setCellValue(tx.getJumlah().doubleValue());
+               } else {
+                  debitCell.setCellValue("");
+                  creditCell.setCellValue("");
+               }
             } else {
-               amountCell.setCellValue(0.0);
+               debitCell.setCellValue("");
+               creditCell.setCellValue("");
             }
-            amountCell.setCellStyle(numberCellStyle);
          }
 
          // Resize all columns to fit the content size
