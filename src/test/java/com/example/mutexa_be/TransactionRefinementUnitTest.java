@@ -1,12 +1,31 @@
 package com.example.mutexa_be;
 
 import com.example.mutexa_be.service.TransactionRefinementService;
+import com.example.mutexa_be.service.extractor.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TransactionRefinementUnitTest {
 
-    TransactionRefinementService service = new TransactionRefinementService();
+    TransactionRefinementService service;
+
+    @BeforeEach
+    public void setup() {
+        List<CounterpartyExtractor> extractors = Arrays.asList(
+            new BcaCounterpartyExtractor(),
+            new BriCounterpartyExtractor(),
+            new MandiriCounterpartyExtractor(),
+            new UobCounterpartyExtractor(),
+            new GenericCounterpartyExtractor()
+        );
+        service = new TransactionRefinementService(extractors);
+        service.init();
+    }
 
     // ================================================================
     // BCA Tests

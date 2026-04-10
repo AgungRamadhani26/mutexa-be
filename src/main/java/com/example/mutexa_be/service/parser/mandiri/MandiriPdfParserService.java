@@ -35,6 +35,9 @@ public class MandiriPdfParserService implements PdfParserService {
 
    private final TransactionRefinementService transactionRefinementService;
 
+   @Override
+   public String getBankName() { return "MANDIRI"; }
+
    // Mendeteksi Tanggal Awal Transaksi Mandiri (contoh: "31 Dec 2025,")
    private static final Pattern DATE_PATTERN = Pattern.compile("^(\\d{2}\\s+[A-Za-z]{3}\\s+\\d{4}),?$");
 

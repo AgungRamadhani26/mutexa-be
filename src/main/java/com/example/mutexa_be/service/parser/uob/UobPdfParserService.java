@@ -34,6 +34,9 @@ public class UobPdfParserService implements PdfParserService {
 
    private final TransactionRefinementService transactionRefinementService;
 
+   @Override
+   public String getBankName() { return "UOB"; }
+
    // 1. Deteksi Statement Date (Awal Transaksi) - contoh: "03/11/2025"
    // Hanya tanggal tok, karena waktu transaksinya numpang di baris bawahnya
    private static final Pattern STATEMENT_DATE_PATTERN = Pattern.compile("^(\\d{2}/\\d{2}/\\d{4})$");

@@ -36,6 +36,9 @@ public class BcaPdfParserService implements PdfParserService {
 
     private final TransactionRefinementService transactionRefinementService;
 
+    @Override
+    public String getBankName() { return "BCA"; }
+
     // Pattern untuk deteksi tahun dari header "PERIODE : JANUARI 2025"
     private static final Pattern PERIOD_PATTERN = Pattern.compile("PERIODE\\s*:\\s*(\\w+)\\s+(\\d{4})");
 

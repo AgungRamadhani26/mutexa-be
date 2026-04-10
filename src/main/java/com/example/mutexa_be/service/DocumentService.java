@@ -9,72 +9,105 @@ import com.example.mutexa_be.entity.enums.DocumentType;
 import com.example.mutexa_be.repository.BankAccountRepository;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import com.example.mutexa_be.repository.MutationDocumentRepository;
-import com.example.mutexa_be.service.parser.bri.BriPdfParserService;
-import com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService;
-import com.example.mutexa_be.service.parser.uob.UobPdfParserService;
-import com.example.mutexa_be.service.parser.bca.BcaPdfParserService;
 import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
-import com.example.mutexa_be.service.CategorizationService;
-import com.example.mutexa_be.service.AnomalyDetectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import com.example.mutexa_be.dto.response.AccountWithDocumentsResponse;
 import com.example.mutexa_be.dto.response.DocumentListResponse;
 
+/**
+ * Service Utama (Orchestrator) untuk mengelola proses upload dan pemrosesan dokumen mutasi.
+ *
+ * Prinsip SOLID yang diterapkan:
+ * - SRP: Class ini HANYA mengatur alur (orchestration), bukan mengerjakan sendiri.
+ *        Parsing → ParserRouterService, File I/O → FileStorageService,
+ *        Kategorisasi → CategorizationService, Anomali → AnomalyDetectionService.
+ * - OCP: Menambah bank baru TIDAK perlu mengubah class ini sama sekali.
+ * - DIP: Depend pada abstraksi (interface) bukan concrete implementation.
+ *
+ * Alur utama uploadAndRegisterDocument():
+ * 1. FileStorageService.saveFile() → simpan file ke disk
+ * 2. FileStorageService.detectType() → PDF digital atau scan?
+ * 3. ParserRouterService.routeAndParse() → rutekan ke parser bank yang sesuai
+ * 4. Filter duplikasi via hash → hindari data ganda
+ * 5. CategorizationService.enrichUnclassified() → klasifikasi tipe transaksi
+ * 6. AnomalyDetectionService.detectAnomalies() → deteksi pola anomali
+ * 7. bankTransactionRepository.saveAll() → simpan ke database
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentService {
 
+   // --- DEPENDENCY INJECTION (semua via constructor injection oleh Lombok @RequiredArgsConstructor) ---
    private final MutationDocumentRepository mutationDocumentRepository;
    private final BankAccountRepository bankAccountRepository;
    private final BankTransactionRepository bankTransactionRepository;
-   private final BriPdfParserService briPdfParserService;
-   private final MandiriPdfParserService mandiriPdfParserService;
-   private final UobPdfParserService uobPdfParserService;
-   private final BcaPdfParserService bcaPdfParserService;
-   private final BcaImageParserService bcaImageParserService;
-   private final CategorizationService categorizationService;
-   private final AnomalyDetectionService anomalyDetectionService;
 
-   // Lokasi folder sementara tempat menyimpan file PDF/Gambar user supaya tidak membebani RAM
-   private final String UPLOAD_DIR = "uploads/";
+   // Service-service yang menerapkan prinsip SRP (masing-masing punya 1 tanggung jawab)
+   private final FileStorageService fileStorageService;           // SRP: File I/O + deteksi tipe
+   private final ParserRouterService parserRouterService;         // SRP: Routing parser bank
+   private final BcaImageParserService bcaImageParserService;     // Parser khusus OCR BCA
+   private final CategorizationService categorizationService;     // SRP: Klasifikasi transaksi
+   private final AnomalyDetectionService anomalyDetectionService; // SRP: Deteksi anomali
 
+   // ==========================================
+   // QUERY METHODS (Baca Data)
+   // ==========================================
+
+   /**
+    * Mengambil daftar semua rekening bank beserta jumlah dokumen masing-masing.
+    * Digunakan oleh Level 1 Dashboard (tampilan daftar rekening).
+    *
+    * @return List rekening dengan hitungan dokumen
+    */
    public List<AccountWithDocumentsResponse> getAccountsWithDocumentCount() {
-       return bankAccountRepository.getAccountsWithDocumentCount();
+      return bankAccountRepository.getAccountsWithDocumentCount();
    }
 
+   /**
+    * Mengambil daftar dokumen mutasi milik satu rekening tertentu.
+    * Digunakan oleh Level 2 Dashboard (tampilan daftar dokumen per rekening).
+    *
+    * @param accountId ID rekening bank
+    * @return List dokumen yang disortir berdasarkan waktu upload terbaru
+    */
    public List<DocumentListResponse> getDocumentsByAccountId(Long accountId) {
-       List<MutationDocument> docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
-       return docs.stream().map(d -> DocumentListResponse.builder()
-               .id(d.getId())
-               .fileName(d.getFileName())
-               .fileType(d.getFileType() != null ? d.getFileType().name() : null)
-               .status(d.getStatus() != null ? d.getStatus().name() : null)
-               .errorMessage(d.getErrorMessage())
-               .periodStart(d.getPeriodStart())
-               .periodEnd(d.getPeriodEnd())
-               .createdAt(d.getCreatedAt())
-               .build()
-       ).collect(Collectors.toList());
+      List<MutationDocument> docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
+      return docs.stream().map(d -> DocumentListResponse.builder()
+              .id(d.getId())
+              .fileName(d.getFileName())
+              .fileType(d.getFileType() != null ? d.getFileType().name() : null)
+              .status(d.getStatus() != null ? d.getStatus().name() : null)
+              .errorMessage(d.getErrorMessage())
+              .periodStart(d.getPeriodStart())
+              .periodEnd(d.getPeriodEnd())
+              .createdAt(d.getCreatedAt())
+              .build()
+      ).collect(Collectors.toList());
    }
 
+   // ==========================================
+   // PROSES UPLOAD DOKUMEN (Command/Write)
+   // ==========================================
+
+   /**
+    * Mengkoordinasikan seluruh proses upload dan pemrosesan dokumen mutasi.
+    * Method ini adalah orchestrator yang mendelegasikan pekerjaan ke service spesifik.
+    *
+    * @param request DTO berisi file, nomor rekening, nama bank, dll
+    * @return Entity MutationDocument yang sudah tersimpan (status SUCCESS/FAILED)
+    */
    public MutationDocument uploadAndRegisterDocument(UploadDocumentRequest request) {
       MultipartFile file = request.getFile();
 
@@ -83,32 +116,17 @@ public class DocumentService {
       }
 
       // 1. Cari atau buat entitas Rekening Bank (Upsert)
-      BankAccount account = bankAccountRepository.findByAccountNumber(request.getAccountNumber())
-            .orElseGet(() -> {
-               log.info("Rekening baru terdeteksi, menyimpan rekening: {}", request.getAccountNumber());
-               return bankAccountRepository.save(BankAccount.builder()
-                     .accountNumber(request.getAccountNumber())
-                     .accountName(request.getAccountName())
-                     .bankName(request.getBankName().toUpperCase())
-                     .build());
-            });
+      BankAccount account = findOrCreateAccount(request);
 
       try {
-         // 2. Simpan fisik file ke storage lokal folder `uploads/`
-         Path uploadPath = Paths.get(UPLOAD_DIR);
-         if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-         }
+         // 2. Simpan file ke disk via FileStorageService (SRP: file I/O dipisahkan)
+         Path filePath = fileStorageService.saveFile(file);
 
-         String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-         Path filePath = uploadPath.resolve(uniqueFileName);
-         Files.copy(file.getInputStream(), filePath);
+         // 3. Deteksi tipe dokumen via FileStorageService (PDF digital vs scan)
+         DocumentType detectedType = fileStorageService.detectType(
+               filePath.toFile(), file.getContentType(), file.getOriginalFilename());
 
-         // 3. Deteksi Tipe File (Pdf Digital vs Image/Scan dll)
-         DocumentType detectedType = detectDocumentType(filePath.toFile(), file.getContentType(),
-               file.getOriginalFilename());
-
-         // 4. Rekam ke Database dengan status awal PARSING
+         // 4. Catat metadata dokumen ke database dengan status awal PARSING
          MutationDocument document = MutationDocument.builder()
                .bankAccount(account)
                .fileName(file.getOriginalFilename())
@@ -118,109 +136,13 @@ public class DocumentService {
                .periodStart(LocalDate.now())
                .periodEnd(LocalDate.now())
                .build();
-
          document = mutationDocumentRepository.save(document);
 
-         // 5. PANGGIL PARSER SESUAI TIPE FILE & BANK SEKARANG JUGA!
+         // 5. Proses parsing sesuai tipe dokumen
          if (detectedType == DocumentType.PDF_DIGITAL) {
-            String bankName = request.getBankName().toUpperCase();
-            try {
-               log.info("Memulai parsing PDF {}...", bankName);
-               List<BankTransaction> extractedTxs = new ArrayList<>();
-
-               if (bankName.equals("BRI")) {
-                  extractedTxs = briPdfParserService.parse(document, filePath.toString());
-               } else if (bankName.equals("MANDIRI")) {
-                  extractedTxs = mandiriPdfParserService.parse(document, filePath.toString());
-               } else if (bankName.equals("UOB")) {
-                  extractedTxs = uobPdfParserService.parse(document, filePath.toString());
-               } else if (bankName.equals("BCA")) {
-                  extractedTxs = bcaPdfParserService.parse(document, filePath.toString());
-               } else {
-                  log.warn("Bank {} belum ada Regex Parser PDF-nya. Ditandai FAILED.", bankName);
-                  document.setStatus(DocumentStatus.FAILED);
-                  document.setErrorMessage("Parser PDF untuk bank " + bankName + " belum tersedia.");
-                  mutationDocumentRepository.save(document);
-                  return document;
-               }
-
-               // Proses filter duplikasi & Update Document Period
-               List<BankTransaction> txToSave = new ArrayList<>();
-               int duplicateCount = 0;
-               LocalDate minDate = null;
-               LocalDate maxDate = null;
-
-               for (BankTransaction tx : extractedTxs) {
-                  if (tx.getTransactionDate() != null) {
-                     if (minDate == null || tx.getTransactionDate().isBefore(minDate))
-                        minDate = tx.getTransactionDate();
-                     if (maxDate == null || tx.getTransactionDate().isAfter(maxDate))
-                        maxDate = tx.getTransactionDate();
-                  }
-
-                  String hash = tx.getDuplicateHash();
-                  if (bankTransactionRepository.existsByDuplicateHash(hash)) {
-                     duplicateCount++;
-                  } else {
-                     txToSave.add(tx);
-                  }
-               }
-
-               // 1. Kategorisasi Tipe Transaksi (Income, Transfer, Tax, etc)
-               categorizationService.enrichUnclassified(txToSave);
-
-               // 2. Deteksi Anomali pada rangkaian transaksi (Window Dressing, Retur, Nominal Aneh)
-               anomalyDetectionService.detectAnomalies(txToSave);
-
-               // 3. Simpan ke database
-               bankTransactionRepository.saveAll(txToSave);
-
-               // Update document properties
-               if (minDate != null)
-                  document.setPeriodStart(minDate);
-               if (maxDate != null)
-                  document.setPeriodEnd(maxDate);
-
-               document.setStatus(DocumentStatus.SUCCESS);
-               mutationDocumentRepository.save(document);
-
-               log.info("Parsing Selesai. Disimpan: {}, Duplikat diabaikan: {}", txToSave.size(), duplicateCount);
-            } catch (Exception e) {
-               log.error("Gagal saat mencoba mem-parse PDF {}: {}", bankName, e.getMessage());
-               document.setStatus(DocumentStatus.FAILED);
-               document.setErrorMessage(e.getMessage());
-               mutationDocumentRepository.save(document);
-            }
+            processPdfDigital(document, request.getBankName().toUpperCase(), filePath.toString());
          } else if (detectedType == DocumentType.IMAGE_SCAN) {
-            // JIKA FILE ADALAH IMAGE_SCAN -> Mulai proses dengan Tesseract OCR
-            log.info("Tipe Dokumen IMAGE_SCAN terdeteksi. Mengecek dukungan OCR Bank...");
-
-            if (request.getBankName().equalsIgnoreCase("BCA")) {
-               try {
-                  log.info("Merutekan PDF Scanner ke Parser BCA (Tesseract OCR)...");
-                  List<BankTransaction> extractedOcrTxs = bcaImageParserService.parseAndSave(document,
-                        filePath.toString());
-
-                  if (!extractedOcrTxs.isEmpty()) {
-                     document.setStatus(DocumentStatus.SUCCESS);
-                     mutationDocumentRepository.save(document);
-                  } else {
-                     document.setStatus(DocumentStatus.FAILED);
-                     document.setErrorMessage("Gagal menemukan transaksi melalui pemindaian OCR (PaddleOCR) BCA.");
-                     mutationDocumentRepository.save(document);
-                  }
-               } catch (Exception e) {
-                  log.error("Proses Tesseract OCR BCA Gagal Berjalan: {}", e.getMessage(), e);
-                  document.setStatus(DocumentStatus.FAILED);
-                  document.setErrorMessage("Proses Tesseract OCR Terhenti: " + e.getMessage());
-                  mutationDocumentRepository.save(document);
-               }
-            } else {
-               log.warn("Bank {} belum didukung untuk proses OCR Image Scan. Ditandai FAILED.", request.getBankName());
-               document.setStatus(DocumentStatus.FAILED);
-               document.setErrorMessage("Parser OCR Scanner untuk bank " + request.getBankName() + " belum tersedia.");
-               mutationDocumentRepository.save(document);
-            }
+            processImageScan(document, request.getBankName(), filePath.toString());
          }
 
          return document;
@@ -231,33 +153,129 @@ public class DocumentService {
       }
    }
 
+   // ==========================================
+   // PRIVATE HELPER METHODS
+   // ==========================================
+
    /**
-    * Memeriksa apakah ini PDF murni (ada teksnya) atau hanya hasil scan / gambar.
+    * Mencari rekening bank berdasarkan nomor rekening.
+    * Jika tidak ditemukan, buat entitas baru (Upsert pattern).
     */
-   private DocumentType detectDocumentType(File savedFile, String contentType, String originalFilename) {
-      if (contentType != null && (contentType.startsWith("image/") || originalFilename.toLowerCase().endsWith(".jpg")
-            || originalFilename.toLowerCase().endsWith(".png"))) {
-         return DocumentType.IMAGE_SCAN;
+   private BankAccount findOrCreateAccount(UploadDocumentRequest request) {
+      return bankAccountRepository.findByAccountNumber(request.getAccountNumber())
+            .orElseGet(() -> {
+               log.info("Rekening baru terdeteksi, menyimpan rekening: {}", request.getAccountNumber());
+               return bankAccountRepository.save(BankAccount.builder()
+                     .accountNumber(request.getAccountNumber())
+                     .accountName(request.getAccountName())
+                     .bankName(request.getBankName().toUpperCase())
+                     .build());
+            });
+   }
+
+   /**
+    * Memproses dokumen PDF digital.
+    * Alur: ParserRouter → filter duplikasi → kategorisasi → anomali → simpan DB.
+    */
+   private void processPdfDigital(MutationDocument document, String bankName, String filePath) {
+      try {
+         log.info("Memulai parsing PDF {}...", bankName);
+
+         // Delegasikan parsing ke ParserRouterService (OCP: tidak perlu if/else di sini)
+         List<BankTransaction> extractedTxs = parserRouterService.routeAndParse(bankName, document, filePath);
+
+         // Filter duplikasi dan hitung periode dokumen
+         List<BankTransaction> txToSave = filterDuplicatesAndUpdatePeriod(extractedTxs, document);
+
+         // Pipeline pemrosesan transaksi (masing-masing service punya SRP tersendiri)
+         categorizationService.enrichUnclassified(txToSave);        // Step 1: Klasifikasi
+         anomalyDetectionService.detectAnomalies(txToSave);          // Step 2: Deteksi anomali
+         bankTransactionRepository.saveAll(txToSave);                // Step 3: Simpan
+
+         document.setStatus(DocumentStatus.SUCCESS);
+         mutationDocumentRepository.save(document);
+
+         log.info("Parsing Selesai. Total transaksi disimpan: {}", txToSave.size());
+
+      } catch (UnsupportedOperationException e) {
+         // Bank belum ada parser-nya
+         log.warn(e.getMessage());
+         document.setStatus(DocumentStatus.FAILED);
+         document.setErrorMessage(e.getMessage());
+         mutationDocumentRepository.save(document);
+      } catch (Exception e) {
+         log.error("Gagal saat parsing PDF {}: {}", bankName, e.getMessage());
+         document.setStatus(DocumentStatus.FAILED);
+         document.setErrorMessage(e.getMessage());
+         mutationDocumentRepository.save(document);
       }
+   }
 
-      if (originalFilename != null && originalFilename.toLowerCase().endsWith(".pdf")) {
-         try (PDDocument document = Loader.loadPDF(savedFile)) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setStartPage(1);
-            stripper.setEndPage(1);
-            String text = stripper.getText(document);
+   /**
+    * Memproses dokumen gambar/scan menggunakan OCR.
+    * Saat ini baru mendukung BCA Image Parser.
+    */
+   private void processImageScan(MutationDocument document, String bankName, String filePath) {
+      if (bankName.equalsIgnoreCase("BCA")) {
+         try {
+            log.info("Merutekan ke Parser BCA (Tesseract OCR)...");
+            List<BankTransaction> extractedOcrTxs = bcaImageParserService.parseAndSave(document, filePath);
 
-            if (text == null || text.trim().isEmpty()) {
-               return DocumentType.IMAGE_SCAN;
+            if (!extractedOcrTxs.isEmpty()) {
+               document.setStatus(DocumentStatus.SUCCESS);
             } else {
-               return DocumentType.PDF_DIGITAL;
+               document.setStatus(DocumentStatus.FAILED);
+               document.setErrorMessage("Gagal menemukan transaksi melalui OCR BCA.");
             }
          } catch (Exception e) {
-            log.warn("Tidak dapat mengekstrak teks awal PDF ini, dianggap sebagai IMAGE_SCAN", e);
-            return DocumentType.IMAGE_SCAN;
+            log.error("Proses OCR BCA Gagal: {}", e.getMessage(), e);
+            document.setStatus(DocumentStatus.FAILED);
+            document.setErrorMessage("Proses OCR Terhenti: " + e.getMessage());
+         }
+      } else {
+         log.warn("Bank {} belum didukung untuk proses OCR Image Scan.", bankName);
+         document.setStatus(DocumentStatus.FAILED);
+         document.setErrorMessage("Parser OCR untuk bank " + bankName + " belum tersedia.");
+      }
+      mutationDocumentRepository.save(document);
+   }
+
+   /**
+    * Memfilter transaksi duplikat berdasarkan hash dan menghitung periode dokumen.
+    * Transaksi yang hash-nya sudah ada di database akan dilewati.
+    *
+    * @return List transaksi yang lolos filter (tidak duplikat)
+    */
+   private List<BankTransaction> filterDuplicatesAndUpdatePeriod(
+         List<BankTransaction> extractedTxs, MutationDocument document) {
+
+      List<BankTransaction> txToSave = new ArrayList<>();
+      int duplicateCount = 0;
+      LocalDate minDate = null;
+      LocalDate maxDate = null;
+
+      for (BankTransaction tx : extractedTxs) {
+         // Hitung periode (tanggal paling awal & paling akhir)
+         if (tx.getTransactionDate() != null) {
+            if (minDate == null || tx.getTransactionDate().isBefore(minDate))
+               minDate = tx.getTransactionDate();
+            if (maxDate == null || tx.getTransactionDate().isAfter(maxDate))
+               maxDate = tx.getTransactionDate();
+         }
+
+         // Cek duplikasi berdasarkan hash unik
+         if (bankTransactionRepository.existsByDuplicateHash(tx.getDuplicateHash())) {
+            duplicateCount++;
+         } else {
+            txToSave.add(tx);
          }
       }
 
-      return DocumentType.IMAGE_SCAN;
+      // Update periode dokumen berdasarkan range tanggal transaksi
+      if (minDate != null) document.setPeriodStart(minDate);
+      if (maxDate != null) document.setPeriodEnd(maxDate);
+
+      log.info("Filter duplikasi: {} disimpan, {} diabaikan", txToSave.size(), duplicateCount);
+      return txToSave;
    }
 }

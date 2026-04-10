@@ -35,6 +35,9 @@ public class BriPdfParserService implements PdfParserService {
 
    private final TransactionRefinementService transactionRefinementService;
 
+   @Override
+   public String getBankName() { return "BRI"; }
+
    // Regex untuk mendeteksi baris tabel yang dimulai dengan Tanggal & Jam (contoh:
    // 01/12/25 09:29:59)
    // Grup 1: Tanggal (DD/MM/YY)
