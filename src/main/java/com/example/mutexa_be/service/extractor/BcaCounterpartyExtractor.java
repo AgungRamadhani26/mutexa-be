@@ -66,11 +66,16 @@ public class BcaCounterpartyExtractor extends AbstractCounterpartyExtractor {
         name = name.replaceAll("^TANGGAL\\s*:\\s*\\d{2}/\\d{2}\\s*", "");
         
         // 2. Bersihkan Angka Nominal / Kode Referensi di awal nama 
-        // Pola: [Angka Saja]/ atau [Angka].00 atau [Angka],00
         name = name.replaceAll("^\\d{4,}/", ""); 
         name = name.replaceAll("^[\\d,.]+[.,]\\d{2}\\s*", "");
         
-        // 3. Bersihkan Karakter Noise di awal/akhir
+        // 3. Bersihkan Noise Simbol dan ID Panjang di akhir nama
+        // Misal: "ADIRA FINANC - - 011724212284" -> "ADIRA FINANC"
+        name = name.replaceAll("\\s+[-/ ]+\\s+\\d{5,}.*$", ""); // Simbol + ID
+        name = name.replaceAll("\\s+\\d{8,}.*$", "");           // ID Langsung
+        name = name.replaceAll("[-/\\s]{2,}$", "");            // Sisa simbol menggantung
+        
+        // 4. Bersihkan Karakter Noise di awal/akhir
         name = name.replaceAll("^[^A-Z0-9]+", "").replaceAll("[^A-Z0-9]+$", "");
 
         return truncate(name.trim());
