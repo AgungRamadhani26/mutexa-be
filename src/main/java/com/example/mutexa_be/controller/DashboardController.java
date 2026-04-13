@@ -130,11 +130,15 @@ public class DashboardController {
       }
 
       // Apply Flag Filter 
+      boolean showSaldo = false;
       if (flag != null && !flag.trim().isEmpty() && !flag.equals("ALL")) {
           data = data.stream().filter(tx -> tx.getFlag() != null && tx.getFlag().equalsIgnoreCase(flag)).toList();
+      } else {
+          // Hanya tampilkan kolom saldo jika filter flag adalah SEMUA (ALL) atau tidak ada
+          showSaldo = true;
       }
 
-      ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data);
+      ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data, showSaldo);
 
       HttpHeaders headers = new HttpHeaders();
       headers.add("Content-Disposition", "attachment; filename=detail_transaksi.xlsx");

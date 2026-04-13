@@ -9,7 +9,6 @@ import com.example.mutexa_be.entity.enums.DocumentType;
 import com.example.mutexa_be.repository.BankAccountRepository;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import com.example.mutexa_be.repository.MutationDocumentRepository;
-import com.example.mutexa_be.service.parser.bca.BcaImageParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -57,7 +56,7 @@ public class DocumentService {
    // Service-service yang menerapkan prinsip SRP (masing-masing punya 1 tanggung jawab)
    private final FileStorageService fileStorageService;           // SRP: File I/O + deteksi tipe
    private final ParserRouterService parserRouterService;         // SRP: Routing parser bank
-   private final BcaImageParserService bcaImageParserService;     // Parser khusus OCR BCA
+   private final TransactionRefinementService transactionRefinementService;
    private final CategorizationService categorizationService;     // SRP: Klasifikasi transaksi
    private final AnomalyDetectionService anomalyDetectionService; // SRP: Deteksi anomali
 
@@ -211,32 +210,10 @@ public class DocumentService {
       }
    }
 
-   /**
-    * Memproses dokumen gambar/scan menggunakan OCR.
-    * Saat ini baru mendukung BCA Image Parser.
-    */
    private void processImageScan(MutationDocument document, String bankName, String filePath) {
-      if (bankName.equalsIgnoreCase("BCA")) {
-         try {
-            log.info("Merutekan ke Parser BCA (Tesseract OCR)...");
-            List<BankTransaction> extractedOcrTxs = bcaImageParserService.parseAndSave(document, filePath);
-
-            if (!extractedOcrTxs.isEmpty()) {
-               document.setStatus(DocumentStatus.SUCCESS);
-            } else {
-               document.setStatus(DocumentStatus.FAILED);
-               document.setErrorMessage("Gagal menemukan transaksi melalui OCR BCA.");
-            }
-         } catch (Exception e) {
-            log.error("Proses OCR BCA Gagal: {}", e.getMessage(), e);
-            document.setStatus(DocumentStatus.FAILED);
-            document.setErrorMessage("Proses OCR Terhenti: " + e.getMessage());
-         }
-      } else {
-         log.warn("Bank {} belum didukung untuk proses OCR Image Scan.", bankName);
-         document.setStatus(DocumentStatus.FAILED);
-         document.setErrorMessage("Parser OCR untuk bank " + bankName + " belum tersedia.");
-      }
+      log.warn("Mode OCR/Image Scan sudah tidak didukung. Mutexa saat ini hanya mendukung file asli (Native PDF).");
+      document.setStatus(DocumentStatus.FAILED);
+      document.setErrorMessage("Sistem mutasi saat ini hanya bisa memproses konversi file Mutasi PDF Asli (Native), bukan file scan atau foto.");
       mutationDocumentRepository.save(document);
    }
 

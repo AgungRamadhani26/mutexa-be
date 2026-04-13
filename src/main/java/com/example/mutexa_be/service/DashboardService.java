@@ -148,6 +148,7 @@ public class DashboardService {
             .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
+            .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
             .build()).collect(Collectors.toList());
    }

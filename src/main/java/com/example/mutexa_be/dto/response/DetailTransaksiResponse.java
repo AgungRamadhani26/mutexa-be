@@ -18,5 +18,6 @@ public class DetailTransaksiResponse {
    private String keterangan;
    private String flag; // CR / DB
    private BigDecimal jumlah;
+   private BigDecimal saldo;
    private Boolean isExcluded; // Status exclusion
 }

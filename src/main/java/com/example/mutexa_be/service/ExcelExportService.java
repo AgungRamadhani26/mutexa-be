@@ -13,8 +13,10 @@ import java.util.List;
 @Service
 public class ExcelExportService {
 
-   public ByteArrayInputStream exportDetailTransaksiToExcel(List<DetailTransaksiResponse> data) throws IOException {
-      String[] columns = { "Tanggal", "Keterangan", "Flag", "Debit", "Kredit" };
+   public ByteArrayInputStream exportDetailTransaksiToExcel(List<DetailTransaksiResponse> data, boolean showSaldo) throws IOException {
+      String[] columns = showSaldo 
+          ? new String[]{ "Tanggal", "Keterangan", "Flag", "Debit", "Kredit", "Saldo" }
+          : new String[]{ "Tanggal", "Keterangan", "Flag", "Debit", "Kredit" };
 
       try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
          Sheet sheet = workbook.createSheet("Detail Transaksi");
@@ -64,7 +66,8 @@ public class ExcelExportService {
          numberCellStyle.setDataFormat(createHelper.createDataFormat().getFormat("#,##0.00"));
 
          int rowIdx = 1;
-         for (DetailTransaksiResponse tx : data) {
+         for (int i = 0; i < data.size(); i++) {
+            DetailTransaksiResponse tx = data.get(i);
             Row row = sheet.createRow(rowIdx++);
 
             Cell dateCell = row.createCell(0);
@@ -108,6 +111,26 @@ public class ExcelExportService {
             } else {
                debitCell.setCellValue("");
                creditCell.setCellValue("");
+            }
+
+            if (showSaldo) {
+               Cell saldoCell = row.createCell(5);
+               saldoCell.setCellStyle(numberCellStyle);
+               
+               boolean isLastOfDate = true;
+               if (i < data.size() - 1) {
+                   DetailTransaksiResponse nextTx = data.get(i + 1);
+                   if (tx.getTanggal() != null && nextTx.getTanggal() != null 
+                       && tx.getTanggal().equals(nextTx.getTanggal())) {
+                       isLastOfDate = false;
+                   }
+               }
+               
+               if (isLastOfDate && tx.getSaldo() != null) {
+                   saldoCell.setCellValue(tx.getSaldo().doubleValue());
+               } else {
+                   saldoCell.setCellValue("");
+               }
             }
          }
 
