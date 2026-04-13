@@ -80,42 +80,59 @@ public class BcaPdfParserService implements PdfParserService {
 
     private List<BankTransaction> extractTransactions(MutationDocument document, String entireText) {
         List<BankTransaction> results = new ArrayList<>();
+        List<BcaTransactionBuilder> builders = new ArrayList<>();
         String[] lines = entireText.split("\\r?\\n");
         
         int currentYear = LocalDate.now().getYear();
         BigDecimal runningBalance = BigDecimal.ZERO;
-        boolean initialBalanceFound = false;
         
         Map<String, Integer> hashCounters = new HashMap<>();
         BcaTransactionBuilder currentBuilder = null;
+        boolean skipMode = false;
 
         for (String line : lines) {
             line = line.trim();
             if (line.isEmpty()) continue;
+            
+            String upperLine = line.toUpperCase();
 
-            // 1. Deteksi Periode/Tahun
+            // 1. Deteksi Transisi Halaman (Header/Footer sampah)
+            if (upperLine.contains("BERSAMBUNG KE HALAMAN") || upperLine.contains("HALAMAN :")) {
+                skipMode = true;
+                continue;
+            }
+
+            // Batas akhir dari header sampah di semua halaman BCA adalah kolom keterangan mutasi
+            if (upperLine.contains("TANGGAL KETERANGAN") || (upperLine.contains("TANGGAL") && upperLine.contains("KETERANGAN"))) {
+                skipMode = false;
+                continue;
+            }
+
+            // Jika sedang dalam transisi (misal nama kota, nama jalan, kode pos, dll), abaikan semuanya
+            if (skipMode) {
+                continue;
+            }
+
+            // 2. Deteksi Periode/Tahun
             Matcher periodMatcher = PERIOD_PATTERN.matcher(line);
             if (periodMatcher.find()) {
                 currentYear = Integer.parseInt(periodMatcher.group(2));
                 continue;
             }
 
-            // 2. Deteksi Saldo Awal
+            // 3. Deteksi Saldo Awal
             Matcher initialMatcher = INITIAL_BALANCE_PATTERN.matcher(line);
             if (initialMatcher.matches()) {
                 runningBalance = parseAmount(initialMatcher.group(2));
-                initialBalanceFound = true;
                 log.info("Ditemukan Saldo Awal: {}", runningBalance);
                 continue;
             }
 
-            // 3. Deteksi Baris Mutasi Baru
+            // 4. Deteksi Baris Mutasi Baru
             Matcher txMatcher = TRANSACTION_PATTERN.matcher(line);
             if (txMatcher.matches()) {
-                // Jika ada transaksi sebelumnya yang belum di-finalize (multi-line desc)
                 if (currentBuilder != null) {
-                    processAndAdd(results, currentBuilder, document, runningBalance, hashCounters);
-                    runningBalance = results.get(results.size() - 1).getBalance();
+                    builders.add(currentBuilder);
                 }
 
                 currentBuilder = new BcaTransactionBuilder();
@@ -133,83 +150,88 @@ public class BcaPdfParserService implements PdfParserService {
                 continue;
             }
 
-            // 4. Kumpulkan deskripsi tambahan (multi-line)
+            // 5. Kumpulkan deskripsi tambahan (multi-line)
             if (currentBuilder != null) {
-                // Abaikan footer/header yang terselip
-                String upperLine = line.toUpperCase();
-                if (upperLine.contains("BERSAMBUNG KE HALAMAN BERIKUT") || 
-                    upperLine.contains("HALAMAN :") || 
-                    upperLine.contains("TANGGAL KETERANGAN") ||
-                    upperLine.contains("REKENING GIRO") ||
-                    upperLine.contains("NO. REKENING :") ||
-                    upperLine.contains("PERIODE :") ||
-                    upperLine.contains("MATA UANG :") ||
-                    upperLine.contains("CITRA 1 BLOK G") || // Lokasi spesifik user
-                    upperLine.contains("JAKARTA 11840") ||
-                    upperLine.contains("INDONESIA") ||
-                    upperLine.contains("C A T A T A N :") ||
-                    upperLine.contains("SALDO AWAL :") ||
+                // Abaikan footer spesifik internal mutasi
+                if (upperLine.contains("SALDO AWAL :") ||
                     upperLine.contains("MUTASI CR :") ||
                     upperLine.contains("MUTASI DB :") ||
-                    upperLine.contains("SALDO AKHIR :")) {
+                    upperLine.contains("SALDO AKHIR :") ||
+                    upperLine.contains("C A T A T A N :") ||
+                    upperLine.contains("REKENING GIRO")) {
                     continue;
                 }
                 currentBuilder.description += " " + line;
             }
         }
 
-        // Finalize transaksi terakhir
         if (currentBuilder != null) {
-            processAndAdd(results, currentBuilder, document, runningBalance, hashCounters);
+            builders.add(currentBuilder);
         }
 
-        return results;
-    }
-
-    private void processAndAdd(List<BankTransaction> results, BcaTransactionBuilder builder, MutationDocument doc, BigDecimal prevBalance, Map<String, Integer> hashCounters) {
-        BigDecimal finalBalance;
-        if (builder.explicitBalance != null) {
-            finalBalance = builder.explicitBalance;
-        } else {
-            // Hitung running balance jika di PDF kosong
-            if (builder.type == MutationType.CR) {
-                finalBalance = prevBalance.add(builder.amount);
+        // 5. Sweep Algoritma Perhitungan Saldo Mundur (Reverse Back-Tracing)
+        // Kita jalan mundur dari akhir ke awal
+        BigDecimal knownFutureBalance = null;
+        for (int i = builders.size() - 1; i >= 0; i--) {
+            BcaTransactionBuilder b = builders.get(i);
+            
+            // Jika BCA memberi explicit balance pada baris ini, jadikan patokan!
+            if (b.explicitBalance != null) {
+                b.finalBalance = b.explicitBalance;
+                knownFutureBalance = b.explicitBalance;
             } else {
-                finalBalance = prevBalance.subtract(builder.amount);
+                // Jika kosong, hitung MUNDUR dari transaksi di bawahnya (yaitu knownFutureBalance)
+                if (knownFutureBalance != null) {
+                    BcaTransactionBuilder nextTx = builders.get(i + 1);
+                    // Logika Mundur: Jika nextTx adalah Debit (uang keluar), berarti sebelum nextTx saldonya LEBIH BESAR (ditambah)
+                    if (nextTx.type == MutationType.DB) {
+                        knownFutureBalance = knownFutureBalance.add(nextTx.amount);
+                    } else {
+                        // Jika nextTx Kredit uang masuk, berarti sebelumnya saldonya LEBIH KECIL (dikurang)
+                        knownFutureBalance = knownFutureBalance.subtract(nextTx.amount);
+                    }
+                    b.finalBalance = knownFutureBalance;
+                } else {
+                   // Fallback darurat jika baris paling ujung PDF terpotong dan tdk punya explicit balance
+                   b.finalBalance = BigDecimal.ZERO; 
+                }
             }
         }
 
-        String rawDesc = builder.description.trim();
-        String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
-        String cpName = transactionRefinementService.extractCounterpartyName("BCA", rawDesc, builder.type == MutationType.CR);
-        
-        // Safety guard: Truncate counterpartyName to 255 chars (DB limit)
-        if (cpName != null && cpName.length() > 255) {
-            cpName = cpName.substring(0, 252) + "...";
+        // 6. Map to Entitas Database
+        for (BcaTransactionBuilder b : builders) {
+            String rawDesc = b.description.trim();
+            String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
+            String cpName = transactionRefinementService.extractCounterpartyName("BCA", rawDesc, b.type == MutationType.CR);
+            
+            if (cpName != null && cpName.length() > 255) {
+                cpName = cpName.substring(0, 252) + "...";
+            }
+
+            TransactionCategory category = transactionRefinementService.categorizeTransaction(normalizedDesc, b.type == MutationType.CR);
+
+            String baseHash = b.date.toString() + "_" + b.amount.toPlainString() + "_" + normalizedDesc;
+            int count = hashCounters.getOrDefault(baseHash, 0);
+            hashCounters.put(baseHash, count + 1);
+            String finalHash = generateMd5Hash(baseHash + "_" + count);
+
+            results.add(BankTransaction.builder()
+                    .mutationDocument(document)
+                    .bankAccount(document.getBankAccount())
+                    .transactionDate(b.date)
+                    .rawDescription(rawDesc)
+                    .normalizedDescription(normalizedDesc)
+                    .counterpartyName(cpName)
+                    .mutationType(b.type)
+                    .amount(b.amount)
+                    .balance(b.finalBalance)
+                    .category(category)
+                    .isExcluded(false)
+                    .duplicateHash(finalHash)
+                    .build());
         }
 
-        TransactionCategory category = transactionRefinementService.categorizeTransaction(normalizedDesc, builder.type == MutationType.CR);
-
-        // Anti-duplicate hash
-        String baseHash = builder.date.toString() + "_" + builder.amount.toPlainString() + "_" + normalizedDesc;
-        int count = hashCounters.getOrDefault(baseHash, 0);
-        hashCounters.put(baseHash, count + 1);
-        String finalHash = generateMd5Hash(baseHash + "_" + count);
-
-        results.add(BankTransaction.builder()
-                .mutationDocument(doc)
-                .bankAccount(doc.getBankAccount())
-                .transactionDate(builder.date)
-                .rawDescription(rawDesc)
-                .normalizedDescription(normalizedDesc)
-                .counterpartyName(cpName)
-                .mutationType(builder.type)
-                .amount(builder.amount)
-                .balance(finalBalance)
-                .category(category)
-                .isExcluded(false)
-                .duplicateHash(finalHash)
-                .build());
+        return results;
     }
 
     private LocalDate parseDate(String dateStr, int year) {
@@ -245,5 +267,6 @@ public class BcaPdfParserService implements PdfParserService {
         BigDecimal amount;
         MutationType type;
         BigDecimal explicitBalance;
+        BigDecimal finalBalance;
     }
 }
