@@ -31,12 +31,14 @@ import java.util.regex.Pattern;
 @Slf4j
 @RequiredArgsConstructor
 @Service
-public class MandiriPdfParserService implements PdfParserService {
+public class MandiriKopraPdfParserService implements PdfParserService {
 
    private final TransactionRefinementService transactionRefinementService;
 
    @Override
-   public String getBankName() { return "MANDIRI"; }
+   public String getBankName() {
+      return "MANDIRI KOPRA";
+   }
 
    // Mendeteksi Tanggal Awal Transaksi Mandiri (contoh: "31 Dec 2025,")
    private static final Pattern DATE_PATTERN = Pattern.compile("^(\\d{2}\\s+[A-Za-z]{3}\\s+\\d{4}),?$");
@@ -63,7 +65,7 @@ public class MandiriPdfParserService implements PdfParserService {
       try (PDDocument pdfDocument = Loader.loadPDF(file)) {
          PDFTextStripper stripper = new PDFTextStripper();
 
-         // SANGAT PENTING UNTUK MANDIRI KOPRA: false agar urutan paragraf terjaga dengan
+         // SANGAT PENTING UNTUK Mandiri KOPRA: false agar urutan paragraf terjaga dengan
          // sempurna
          stripper.setSortByPosition(false);
 
@@ -94,7 +96,7 @@ public class MandiriPdfParserService implements PdfParserService {
          if (line.isEmpty() || line.startsWith("Account Statement") || line.startsWith("Created ")
                || line.startsWith("Account No.") || line.startsWith("Period ") || line.startsWith("Opening Balance")
                || line.startsWith("Closing Balance") || line.contains("Page ")
-               || line.contains("koprabymandiri.com") || line.contains("CreditReference No")
+               || line.contains("koprabyMandiri.com") || line.contains("CreditReference No")
                || line.startsWith("IDR") || line.contains("For further questions")) {
             continue;
          }
@@ -173,8 +175,10 @@ public class MandiriPdfParserService implements PdfParserService {
       }
 
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
-      String cpName = transactionRefinementService.extractCounterpartyName("MANDIRI", builder.rawDescription, finalType == MutationType.CR);
-      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
+      String cpName = transactionRefinementService.extractCounterpartyName("Mandiri", builder.rawDescription,
+            finalType == MutationType.CR);
+      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc,
+            finalType == MutationType.CR);
 
       String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);

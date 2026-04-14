@@ -19,7 +19,7 @@ public class TransactionRefinementUnitTest {
         List<CounterpartyExtractor> extractors = Arrays.asList(
             new BcaCounterpartyExtractor(),
             new BriCounterpartyExtractor(),
-            new MandiriCounterpartyExtractor(),
+            new MandiriKopraCounterpartyExtractor(),
             new UobCounterpartyExtractor(),
             new GenericCounterpartyExtractor()
         );
@@ -161,42 +161,42 @@ public class TransactionRefinementUnitTest {
 
     @Test
     public void testMandiri_McmKe() {
-        String result = service.extractCounterpartyName("MANDIRI",
+        String result = service.extractCounterpartyName("MANDIRI KOPRA",
             "MCM InhouseTrf KE JUI SHIN INDONESIA Transfer Fee", false);
         assertEquals("JUI SHIN INDONESIA", result);
     }
 
     @Test
     public void testMandiri_McmDari() {
-        String result = service.extractCounterpartyName("MANDIRI",
+        String result = service.extractCounterpartyName("MANDIRI KOPRA",
             "MCM InhouseTrf DARI AHSA JAYA METALINDO Transfer Fee", true);
         assertEquals("AHSA JAYA METALINDO", result);
     }
 
     @Test
     public void testMandiri_Cenaidja() {
-        String result = service.extractCounterpartyName("MANDIRI",
+        String result = service.extractCounterpartyName("MANDIRI KOPRA",
             "CENAIDJA/SUN POWER CERAMICS PT AHSA-SUN POWER CERAM99102", true);
         assertEquals("SUN POWER CERAMICS", result);
     }
 
     @Test
     public void testMandiri_Bninidja() {
-        String result = service.extractCounterpartyName("MANDIRI",
+        String result = service.extractCounterpartyName("MANDIRI KOPRA",
             "BNINIDJA/EUIS MARIAM", true);
         assertEquals("EUIS MARIAM", result);
     }
 
     @Test
     public void testMandiri_Brinidja() {
-        String result = service.extractCounterpartyName("MANDIRI",
+        String result = service.extractCounterpartyName("MANDIRI KOPRA",
             "BRINIDJA/ANUGRAH BANGUN CAHAY AHSA-ANUGRAH", true);
         assertEquals("ANUGRAH BANGUN CAHAY", result);
     }
 
     @Test
     public void testMandiri_SetorTunai() {
-        String result = service.extractCounterpartyName("MANDIRI",
+        String result = service.extractCounterpartyName("MANDIRI KOPRA",
             "Setor tunai AHSA JAYA METALINDO 01-0718203", false);
         assertEquals("AHSA JAYA METALINDO", result);
     }

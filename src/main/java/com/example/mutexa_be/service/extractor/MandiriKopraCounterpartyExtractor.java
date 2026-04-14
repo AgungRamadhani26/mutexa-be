@@ -5,11 +5,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-public class MandiriCounterpartyExtractor extends AbstractCounterpartyExtractor {
+public class MandiriKopraCounterpartyExtractor extends AbstractCounterpartyExtractor {
 
    @Override
    public String getBankName() {
-      return "MANDIRI";
+      return "MANDIRI KOPRA";
    }
 
    @Override
