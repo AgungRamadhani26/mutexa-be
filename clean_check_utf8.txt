@@ -1,0 +1,1252 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.example:mutexa-be >------------------------
+[INFO] Building mutexa-be 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mutexa-be ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mutexa-be ---
+[INFO] skip non existing resourceDirectory C:\Users\agung\Documents\PDP_BCA_Finance\MutexaApp\mutexa-be\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mutexa-be ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.mutexa_be.MandiriVerificationTest
+15:00:28.563 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.example.mutexa_be.MandiriVerificationTest]: MandiriVerificationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+15:00:28.738 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.example.mutexa_be.MutexaBeApplication for test class com.example.mutexa_be.MandiriVerificationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.3)
+
+2026-04-14T15:00:29.294+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.mutexa_be.MandiriVerificationTest    : Starting MandiriVerificationTest using Java 21.0.9 with PID 47852 (started by agung in C:\Users\agung\Documents\PDP_BCA_Finance\MutexaApp\mutexa-be)
+2026-04-14T15:00:29.296+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.mutexa_be.MandiriVerificationTest    : No active profile set, falling back to 1 default profile: "default"
+2026-04-14T15:00:30.465+07:00  INFO 47852 --- [mutexa-be] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-14T15:00:30.549+07:00  INFO 47852 --- [mutexa-be] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 73 ms. Found 4 JPA repository interfaces.
+2026-04-14T15:00:31.343+07:00  INFO 47852 --- [mutexa-be] [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-04-14T15:00:31.483+07:00  INFO 47852 --- [mutexa-be] [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.4.Final
+2026-04-14T15:00:32.306+07:00  INFO 47852 --- [mutexa-be] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-14T15:00:32.342+07:00  INFO 47852 --- [mutexa-be] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-04-14T15:00:32.828+07:00  INFO 47852 --- [mutexa-be] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection ConnectionID:1 ClientConnectionId: b42353e7-6209-41bd-9e53-23ac104b8ca1
+2026-04-14T15:00:32.830+07:00  INFO 47852 --- [mutexa-be] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-04-14T15:00:32.890+07:00  WARN 47852 --- [mutexa-be] [           main] org.hibernate.orm.deprecation            : HHH90000025: SQLServerDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-14T15:00:32.917+07:00  INFO 47852 --- [mutexa-be] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:sqlserver://localhost:1433;concatNullYieldsNull=ON;quotedIdentifier=ON;connectRetryInterval=10;connectRetryCount=1;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulkCopy=true;delayLoadingLobs=true;useFmtOnly=false;vectorTypeSupport=v1;cacheBulkCopyMetadata=false;bulkCopyForBatchInsertAllowEncryptedValueModifications=false;bulkCopyForBatchInsertTableLock=false;bulkCopyForBatchInsertKeepNulls=false;bulkCopyForBatchInsertKeepIdentity=false;bulkCopyForBatchInsertFireTriggers=false;bulkCopyForBatchInsertCheckConstraints=false;bulkCopyForBatchInsertBatchSize=0;useBulkCopyForBatchInsert=false;cancelQueryTimeout=-1;sslProtocol=TLS;calcBigDecimalPrecision=false;useDefaultJaasConfig=false;jaasConfigurationName=SQLJDBCDriver;statementPoolingCacheSize=0;serverPreparedStatementDiscardThreshold=10;enablePrepareOnFirstPreparedStatementCall=false;fips=false;socketTimeout=0;authentication=NotSpecified;authenticationScheme=nativeAuthentication;xopenStates=false;datetimeParameterType=datetime2;sendTimeAsDatetime=true;replication=false;trustStoreType=JKS;trustServerCertificate=true;TransparentNetworkIPResolution=true;iPAddressPreference=IPv4First;serverNameAsACE=false;sendStringParametersAsUnicode=true;selectMethod=direct;responseBuffering=adaptive;queryTimeout=-1;packetSize=8000;multiSubnetFailover=false;loginTimeout=30;lockTimeout=-1;lastUpdateCount=true;useDefaultGSSCredential=false;prepareMethod=prepexec;encrypt=true;disableStatementPooling=true;databaseName=mutexa;columnEncryptionSetting=Disabled;applicationName=Microsoft JDBC Driver for SQL Server;applicationIntent=readwrite;]
+	Database driver: Microsoft JDBC Driver 13.2 for SQL Server
+	Database dialect: SQLServerDialect
+	Database version: 16.0
+	Default catalog/schema: mutexa/dbo
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: 128
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-04-14T15:00:34.446+07:00  INFO 47852 --- [mutexa-be] [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: 
+    alter table bank_transaction 
+       drop constraint if exists FKp9l49cwr9p31x6fx9td0wcvrb
+Hibernate: 
+    alter table bank_transaction 
+       drop constraint if exists FKixq6k4stimd310547a9ow1n9j
+Hibernate: 
+    alter table exclusion_rule 
+       drop constraint if exists FKcq8mctvgix0npoyyplkeq0j0u
+Hibernate: 
+    alter table mutation_document 
+       drop constraint if exists FK4strpqfg6l95ujv1sthhxb4gy
+Hibernate: 
+    drop table if exists bank_account
+Hibernate: 
+    drop table if exists bank_transaction
+Hibernate: 
+    drop table if exists exclusion_rule
+Hibernate: 
+    drop table if exists mutation_document
+Hibernate: 
+    create table bank_account (
+        created_at datetime2(7),
+        id bigint identity not null,
+        updated_at datetime2(7),
+        account_name varchar(255) not null,
+        account_number varchar(255) not null,
+        bank_name varchar(255) not null,
+        primary key (id)
+    )
+Hibernate: 
+    create table bank_transaction (
+        amount numeric(19,4) not null,
+        balance numeric(19,4),
+        is_anomaly bit not null,
+        is_excluded bit not null,
+        transaction_date date not null,
+        account_id bigint not null,
+        created_at datetime2(7),
+        document_id bigint not null,
+        id bigint identity not null,
+        anomaly_reason TEXT,
+        category varchar(255) not null check ((category in ('INCOME','TAX','INTEREST','ADMIN','TRANSFER','ANOMALY','UNCLASSIFIED'))),
+        counterparty_name varchar(255),
+        duplicate_hash varchar(255) not null,
+        mutation_type varchar(255) not null check ((mutation_type in ('CR','DB'))),
+        normalized_description TEXT,
+        raw_description TEXT,
+        primary key (id)
+    )
+Hibernate: 
+    create table exclusion_rule (
+        is_active bit not null,
+        account_id bigint not null,
+        created_at datetime2(7),
+        id bigint identity not null,
+        updated_at datetime2(7),
+        pattern varchar(255) not null,
+        rule_type varchar(255) not null check ((rule_type in ('NAME','ACCOUNT_NUMBER','KEYWORD'))),
+        primary key (id)
+    )
+Hibernate: 
+    create table mutation_document (
+        period_end date,
+        period_start date,
+        account_id bigint not null,
+        created_at datetime2(7),
+        id bigint identity not null,
+        updated_at datetime2(7),
+        error_message TEXT,
+        file_name varchar(255) not null,
+        file_path varchar(255) not null,
+        file_type varchar(255) not null check ((file_type in ('PDF_DIGITAL','IMAGE_SCAN'))),
+        status varchar(255) not null check ((status in ('UPLOADED','PARSING','NORMALIZING','SUCCESS','FAILED','NEEDS_REVIEW'))),
+        primary key (id)
+    )
+Hibernate: 
+    alter table bank_account 
+       add constraint UKmb8kv2x9143o96jgxbv6mahcq unique (account_number)
+Hibernate: 
+    alter table bank_transaction 
+       add constraint UK14kbb76iynnkacg54kba064ga unique (duplicate_hash)
+Hibernate: 
+    alter table bank_transaction 
+       add constraint FKp9l49cwr9p31x6fx9td0wcvrb 
+       foreign key (account_id) 
+       references bank_account
+Hibernate: 
+    alter table bank_transaction 
+       add constraint FKixq6k4stimd310547a9ow1n9j 
+       foreign key (document_id) 
+       references mutation_document
+Hibernate: 
+    alter table exclusion_rule 
+       add constraint FKcq8mctvgix0npoyyplkeq0j0u 
+       foreign key (account_id) 
+       references bank_account
+Hibernate: 
+    alter table mutation_document 
+       add constraint FK4strpqfg6l95ujv1sthhxb4gy 
+       foreign key (account_id) 
+       references bank_account
+2026-04-14T15:00:34.582+07:00  INFO 47852 --- [mutexa-be] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-14T15:00:34.717+07:00  INFO 47852 --- [mutexa-be] [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-04-14T15:00:36.116+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.service.ParserRouterService        : Parser terdaftar untuk bank: BCA
+2026-04-14T15:00:36.117+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.service.ParserRouterService        : Parser terdaftar untuk bank: BRI
+2026-04-14T15:00:36.117+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.service.ParserRouterService        : Parser terdaftar untuk bank: MANDIRI KOPRA
+2026-04-14T15:00:36.117+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.service.ParserRouterService        : Parser terdaftar untuk bank: MANDIRI
+2026-04-14T15:00:36.117+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.service.ParserRouterService        : Parser terdaftar untuk bank: UOB
+2026-04-14T15:00:36.117+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.service.ParserRouterService        : Total parser terdaftar: 5
+2026-04-14T15:00:36.228+07:00  WARN 47852 --- [mutexa-be] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-14T15:00:36.399+07:00  WARN 47852 --- [mutexa-be] [           main] .s.a.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: fc896ed8-4326-4c58-aabe-ba1433122fc7
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-04-14T15:00:36.414+07:00  INFO 47852 --- [mutexa-be] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-04-14T15:00:37.238+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.mutexa_be.MandiriVerificationTest    : Started MandiriVerificationTest in 8.273 seconds (process running for 9.969)
+2026-04-14T15:00:38.587+07:00  INFO 47852 --- [mutexa-be] [           main] c.e.m.s.p.m.MandiriPdfParserService      : Berhasil mem-parsing PDF Mandiri. Ditemukan 132 buah transaksi.
+============== MANDIRI EXTRACTION =============
+TX 1
+  DATE: 2025-01-03
+  TYPE: CR
+  AMT : 100000000.00
+  BAL : 115120997.10
+  CP  : [EMHA ANANDA PERKASA]
+  RAW : Transfer dari Bank lain BRI EMHA ANANDA PERKASA 2901003208304 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 2
+  DATE: 2025-01-04
+  TYPE: CR
+  AMT : 95000000.00
+  BAL : 210120997.10
+  CP  : [DESSY ARIZTIA SAVITR]
+  RAW : BRI EMHA ANANDA PERKASA 2901003208304 Transfer dari BANK MANDIRI DESSY ARIZTIA SAVITR 1010006427981 Pelunasan DP an Dessy Lapagu Transfer BI Fast
+----------------------------------------------
+TX 3
+  DATE: 2025-01-06
+  TYPE: CR
+  AMT : 62500000.00
+  BAL : 272620997.10
+  CP  : [SUTRISNO]
+  RAW : Pelunasan DP an Dessy Lapagu Transfer BI Fast Dari BANK BNI SUTRISNO 799999205 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 4
+  DATE: 2025-01-07
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 282620997.10
+  CP  : [SITI AWALIYAH SOLEHA]
+  RAW : SUTRISNO 799999205 Transfer dari BANK MANDIRI SITI AWALIYAH SOLEHA 1170004921250 booking fee mobil CRV
+----------------------------------------------
+TX 5
+  DATE: 2025-01-07
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 282618497.10
+  CP  : [BIAYA TRANSFER]
+  RAW : booking fee mobil CRV Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 6
+  DATE: 2025-01-07
+  TYPE: DB
+  AMT : 250000000.00
+  BAL : 32618497.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 7
+  DATE: 2025-01-08
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 32615997.10
+  CP  : [BIAYA TRANSFER]
+  RAW : BILGUS MISTISON 33331808 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 8
+  DATE: 2025-01-08
+  TYPE: DB
+  AMT : 32500000.00
+  BAL : 115997.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 9
+  DATE: 2025-01-14
+  TYPE: CR
+  AMT : 8000000.00
+  BAL : 8115997.10
+  CP  : [TOMY HERLAMBANG]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI TOMY HERLAMBANG 1370017839917 Transfer BI Fast 14 Jan 2025 Dari BCA
+----------------------------------------------
+TX 10
+  DATE: 2025-01-14
+  TYPE: CR
+  AMT : 10700000.00
+  BAL : 18815997.10
+  CP  : [BILGUS MISTISON]
+  RAW : TOMY HERLAMBANG 1370017839917 Transfer BI Fast 14 Jan 2025 Dari BCA BILGUS MISTISON 3991289419 Pembayaran kartu kredit
+----------------------------------------------
+TX 11
+  DATE: 2025-01-14
+  TYPE: DB
+  AMT : 18580623.00
+  BAL : 235374.10
+  CP  : [BANK MANDIRI]
+  RAW : BILGUS MISTISON 3991289419 Pembayaran kartu kredit 4149313001641522 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 12
+  DATE: 2025-01-17
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 10235374.10
+  CP  : [YUAN INDRAKI]
+  RAW : 4149313001641522 Transfer dari BANK MANDIRI YUAN INDRAKI 1200013928994 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 13
+  DATE: 2025-01-17
+  TYPE: CR
+  AMT : 20000000.00
+  BAL : 30235374.10
+  CP  : [NOVEL FAJAR RISTAWAN]
+  RAW : YUAN INDRAKI 1200013928994 Transfer dari BANK MANDIRI NOVEL FAJAR RISTAWAN 1220006006616 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 14
+  DATE: 2025-01-18
+  TYPE: DB
+  AMT : 20000.00
+  BAL : 30215374.10
+  CP  : [CENTREPARK CITRA COR]
+  RAW : NOVEL FAJAR RISTAWAN 1220006006616 Transfer ke BANK MANDIRI CENTREPARK CITRA COR 1170007231145 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 15
+  DATE: 2025-01-18
+  TYPE: DB
+  AMT : 880000.00
+  BAL : 29335374.10
+  CP  : [SINAR GEMILANG TUMBU]
+  RAW : CENTREPARK CITRA COR 1170007231145 Transfer ke BANK MANDIRI SINAR GEMILANG TUMBU 1190011075957 4 x sesi zedd mistison
+----------------------------------------------
+TX 16
+  DATE: 2025-01-20
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 29332874.10
+  CP  : [BIAYA TRANSFER]
+  RAW : 4 x sesi zedd mistison Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 17
+  DATE: 2025-01-20
+  TYPE: DB
+  AMT : 29200000.00
+  BAL : 132874.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 2 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 18
+  DATE: 2025-01-20
+  TYPE: CR
+  AMT : 299000000.00
+  BAL : 299132874.10
+  CP  : [YUAN INDRAKI]
+  RAW : BILGUS MISTISON 33331808 2 Transfer dari BANK MANDIRI YUAN INDRAKI 1200013928994 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 19
+  DATE: 2025-01-20
+  TYPE: CR
+  AMT : 223000000.00
+  BAL : 522132874.10
+  CP  : [MUHAMMAD GILANG GIFA]
+  RAW : YUAN INDRAKI 1200013928994 Transfer dari BANK MANDIRI MUHAMMAD GILANG GIFA 1820001176544
+----------------------------------------------
+TX 20
+  DATE: 2025-01-20
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 522130374.10
+  CP  : [BIAYA TRANSFER]
+  RAW : MUHAMMAD GILANG GIFA 1820001176544 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 21
+  DATE: 2025-01-20
+  TYPE: DB
+  AMT : 220000000.00
+  BAL : 302130374.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 22
+  DATE: 2025-01-21
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 302127874.10
+  CP  : [BRI]
+  RAW : BILGUS MISTISON 33331808 Biaya transfer BI Fast Transfer BI Fast Ke BRI
+----------------------------------------------
+TX 23
+  DATE: 2025-01-21
+  TYPE: DB
+  AMT : 250000000.00
+  BAL : 52127874.10
+  CP  : [NANDA RIVAI]
+  RAW : Transfer BI Fast Ke BRI Nanda Rivai 1163402420012502 Alphard G 2021 hitam B 1662 Y
+----------------------------------------------
+TX 24
+  DATE: 2025-01-21
+  TYPE: DB
+  AMT : 6500.00
+  BAL : 52121374.10
+  CP  : [BANK LAIN]
+  RAW : Nanda Rivai 1163402420012502 Alphard G 2021 hitam B 1662 Y Biaya transfer ke Bank lain Transfer ke Bank lain
+----------------------------------------------
+TX 25
+  DATE: 2025-01-21
+  TYPE: DB
+  AMT : 50000000.00
+  BAL : 2121374.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer ke Bank lain BCA BILGUS MISTISON 3991289419 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 26
+  DATE: 2025-01-23
+  TYPE: CR
+  AMT : 70000000.00
+  BAL : 72121374.10
+  CP  : [RIVAN PANGESA]
+  RAW : BCA BILGUS MISTISON 3991289419 Transfer dari BANK MANDIRI RIVAN PANGESA 1200010368749
+----------------------------------------------
+TX 27
+  DATE: 2025-01-23
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 72118874.10
+  CP  : [BIAYA TRANSFER]
+  RAW : RIVAN PANGESA 1200010368749 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 28
+  DATE: 2025-01-23
+  TYPE: DB
+  AMT : 70000000.00
+  BAL : 2118874.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 3991289419 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 29
+  DATE: 2025-01-24
+  TYPE: CR
+  AMT : 300000000.00
+  BAL : 302118874.10
+  CP  : [ADE ZAENAB]
+  RAW : BILGUS MISTISON 3991289419 Transfer dari BANK MANDIRI ADE ZAENAB 1570005463246 pembayaran VRZ 2022 putih Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 30
+  DATE: 2025-01-24
+  TYPE: CR
+  AMT : 20000000.00
+  BAL : 322118874.10
+  CP  : [MOYA ASYARAH]
+  RAW : pembayaran VRZ 2022 putih Transfer dari BANK MANDIRI MOYA ASYARAH 1230006388211
+----------------------------------------------
+TX 31
+  DATE: 2025-01-24
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 322116374.10
+  CP  : [BIAYA TRANSFER]
+  RAW : MOYA ASYARAH 1230006388211 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 32
+  DATE: 2025-01-24
+  TYPE: DB
+  AMT : 250000000.00
+  BAL : 72116374.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 33
+  DATE: 2025-01-24
+  TYPE: DB
+  AMT : 8500.00
+  BAL : 72107874.10
+  CP  : [BIAYA ADMINISTRASI KARTU]
+  RAW : BILGUS MISTISON 33331808 Biaya administrasi kartu debit
+----------------------------------------------
+TX 34
+  DATE: 2025-01-25
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 72105374.10
+  CP  : [BIAYA TRANSFER]
+  RAW : Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 35
+  DATE: 2025-01-25
+  TYPE: DB
+  AMT : 2000000.00
+  BAL : 70105374.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 36
+  DATE: 2025-01-25
+  TYPE: DB
+  AMT : 70000000.00
+  BAL : 105374.10
+  CP  : [RIVAN PANGESA]
+  RAW : BILGUS MISTISON 33331808 Transfer ke BANK MANDIRI RIVAN PANGESA 1200010368749 Transfer antar Mandiri DARI MERPATI ABADI SEJAHTERA
+----------------------------------------------
+TX 37
+  DATE: 2025-01-25
+  TYPE: CR
+  AMT : 180000000.00
+  BAL : 180105374.10
+  CP  : [MERPATI ABADI SEJAHTERA]
+  RAW : RIVAN PANGESA 1200010368749 Transfer antar Mandiri DARI MERPATI ABADI SEJAHTERA Transfer Fee 202501251555607791
+----------------------------------------------
+TX 38
+  DATE: 2025-01-26
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 180102874.10
+  CP  : [BIAYA TRANSFER]
+  RAW : Transfer Fee 202501251555607791 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 39
+  DATE: 2025-01-26
+  TYPE: DB
+  AMT : 180000000.00
+  BAL : 102874.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 40
+  DATE: 2025-01-29
+  TYPE: CR
+  AMT : 5000000.00
+  BAL : 5102874.10
+  CP  : [SYAFIRA AYUNING PANG]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI SYAFIRA AYUNING PANG 1330018389908 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 41
+  DATE: 2025-01-29
+  TYPE: CR
+  AMT : 130000000.00
+  BAL : 135102874.10
+  CP  : [RIO KHAIRUL IKHWAN]
+  RAW : SYAFIRA AYUNING PANG 1330018389908 Transfer dari BANK MANDIRI RIO KHAIRUL IKHWAN 1670004494216 Brio Hitam
+----------------------------------------------
+TX 42
+  DATE: 2025-01-30
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 135100374.10
+  CP  : [BIAYA TRANSFER]
+  RAW : Brio Hitam Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 43
+  DATE: 2025-01-30
+  TYPE: DB
+  AMT : 135000000.00
+  BAL : 100374.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer antar Mandiri DARI MERPATI ABADI SEJAHTERA
+----------------------------------------------
+TX 44
+  DATE: 2025-01-30
+  TYPE: CR
+  AMT : 20000000.00
+  BAL : 20100374.10
+  CP  : [MERPATI ABADI SEJAHTERA]
+  RAW : BILGUS MISTISON 33331808 Transfer antar Mandiri DARI MERPATI ABADI SEJAHTERA Transfer Fee 202501301315707842
+----------------------------------------------
+TX 45
+  DATE: 2025-01-30
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 20097874.10
+  CP  : [BIAYA TRANSFER]
+  RAW : Transfer Fee 202501301315707842 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 46
+  DATE: 2025-01-30
+  TYPE: DB
+  AMT : 20000000.00
+  BAL : 97874.10
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 47
+  DATE: 2025-01-31
+  TYPE: DB
+  AMT : 12500.00
+  BAL : 85374.10
+  CP  : [BIAYA ADMINISTRASI REKENING]
+  RAW : BILGUS MISTISON 33331808 Biaya administrasi rekening
+----------------------------------------------
+TX 48
+  DATE: 2025-01-31
+  TYPE: DB
+  AMT : 5269.64
+  BAL : 80104.46
+  CP  : [TAX]
+  RAW : Pajak rekening
+----------------------------------------------
+TX 49
+  DATE: 2025-01-31
+  TYPE: DB
+  AMT : 25000.00
+  BAL : 55104.46
+  CP  : [BIAYA SALDO MINIMUM]
+  RAW : Biaya saldo minimum
+----------------------------------------------
+TX 50
+  DATE: 2025-01-31
+  TYPE: CR
+  AMT : 26348.21
+  BAL : 81452.67
+  CP  : [INTEREST]
+  RAW : Bunga rekening from Bank Mandiri. 2. Segala bentuk penggunaan e-Statement ini menjadi tanggung jawab Nasabah sepenuhnya./All forms of usage of this e-Statement are the Customer's role responsibility
+----------------------------------------------
+TX 51
+  DATE: 2025-02-03
+  TYPE: CR
+  AMT : 275498000.00
+  BAL : 275579452.67
+  CP  : [FROM BANK MANDIRI SEGALA BENTUK PENGGUNAAN STATEMENT INI MENJADI TANGGUNG JAWAB NASABAH SEPENUHNYA ALL FORMS OF USAGE OF THIS STATEMENT ARE THE CUSTOMER ROLE RESPONSIBILITY]
+  RAW : from Bank Mandiri. 2. Segala bentuk penggunaan e-Statement ini menjadi tanggung jawab Nasabah sepenuhnya./All forms of usage of this e-Statement are the Customer's role responsibility
+----------------------------------------------
+TX 52
+  DATE: 2025-02-03
+  TYPE: DB
+  AMT : 275000000.00
+  BAL : 579452.67
+  CP  : [RACHMAN ARIF SUSANTO]
+  RAW : RIZTANTI EVITA 1640000750598 Transfer ke BANK MANDIRI RACHMAN ARIF SUSANTO 1560013226081 04 Feb 2025 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 53
+  DATE: 2025-02-04
+  TYPE: CR
+  AMT : 85800000.00
+  BAL : 86379452.67
+  CP  : [SYAFIRA AYUNING PANG]
+  RAW : RACHMAN ARIF SUSANTO 1560013226081 04 Feb 2025 Transfer dari BANK MANDIRI SYAFIRA AYUNING PANG 1330018389908
+----------------------------------------------
+TX 54
+  DATE: 2025-02-04
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 86376952.67
+  CP  : [BIAYA TRANSFER]
+  RAW : SYAFIRA AYUNING PANG 1330018389908 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 55
+  DATE: 2025-02-04
+  TYPE: DB
+  AMT : 86200000.00
+  BAL : 176952.67
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 09 Feb 2025 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 56
+  DATE: 2025-02-09
+  TYPE: CR
+  AMT : 100000000.00
+  BAL : 100176952.67
+  CP  : [SOVIAN ANDI PUTRA]
+  RAW : BILGUS MISTISON 33331808 09 Feb 2025 Transfer dari BANK MANDIRI SOVIAN ANDI PUTRA 1670003705810 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 57
+  DATE: 2025-02-09
+  TYPE: CR
+  AMT : 20000000.00
+  BAL : 120176952.67
+  CP  : [MOYA ASYARAH]
+  RAW : SOVIAN ANDI PUTRA 1670003705810 Transfer dari BANK MANDIRI MOYA ASYARAH 1230006388211
+----------------------------------------------
+TX 58
+  DATE: 2025-02-09
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 120174452.67
+  CP  : [BIAYA TRANSFER]
+  RAW : MOYA ASYARAH 1230006388211 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 59
+  DATE: 2025-02-09
+  TYPE: DB
+  AMT : 120000000.00
+  BAL : 174452.67
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 60
+  DATE: 2025-02-11
+  TYPE: CR
+  AMT : 58000000.00
+  BAL : 58174452.67
+  CP  : [ERRY PRIYAMBODO]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI ERRY PRIYAMBODO 1560003757285 Transfer BI Fast
+----------------------------------------------
+TX 61
+  DATE: 2025-02-12
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 68174452.67
+  CP  : [MUNAWAR AZRAFI]
+  RAW : ERRY PRIYAMBODO 1560003757285 Transfer BI Fast Dari BRI MUNAWAR AZRAFI 065201021034500 Transfer BI Fast Dari BCA
+----------------------------------------------
+TX 62
+  DATE: 2025-02-12
+  TYPE: CR
+  AMT : 250000000.00
+  BAL : 318174452.67
+  CP  : [BILGUS MISTISON]
+  RAW : MUNAWAR AZRAFI 065201021034500 Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419 Transfer BI Fast 12 Feb 2025 Dari BCA
+----------------------------------------------
+TX 63
+  DATE: 2025-02-12
+  TYPE: CR
+  AMT : 25000000.00
+  BAL : 343174452.67
+  CP  : [BILGUS MISTISON]
+  RAW : BILGUS MISTISON 3991289419 Transfer BI Fast 12 Feb 2025 Dari BCA BILGUS MISTISON 3991289419 Pembayaran BFI Finance Indonesia Tbk, PT
+----------------------------------------------
+TX 64
+  DATE: 2025-02-12
+  TYPE: DB
+  AMT : 342527000.00
+  BAL : 647452.67
+  CP  : [BCA]
+  RAW : BILGUS MISTISON 3991289419 Pembayaran BFI Finance Indonesia Tbk, PT 8853754692407706 Transfer BI Fast Dari BCA
+----------------------------------------------
+TX 65
+  DATE: 2025-02-14
+  TYPE: CR
+  AMT : 20000000.00
+  BAL : 20647452.67
+  CP  : [BILGUS MISTISON]
+  RAW : 8853754692407706 Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419 14 Feb 2025 Pembayaran kartu kredit
+----------------------------------------------
+TX 66
+  DATE: 2025-02-14
+  TYPE: DB
+  AMT : 20493368.00
+  BAL : 154084.67
+  CP  : [BNI]
+  RAW : BILGUS MISTISON 3991289419 14 Feb 2025 Pembayaran kartu kredit 4149313001641522 Transfer BI Fast Dari BANK BNI
+----------------------------------------------
+TX 67
+  DATE: 2025-02-16
+  TYPE: CR
+  AMT : 14000000.00
+  BAL : 14154084.67
+  CP  : [ZAINAL ABIDIN]
+  RAW : 4149313001641522 Transfer BI Fast Dari BANK BNI ZAINAL ABIDIN 0843618382 Mataram
+----------------------------------------------
+TX 68
+  DATE: 2025-02-16
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 14151584.67
+  CP  : [BIAYA TRANSFER]
+  RAW : ZAINAL ABIDIN 0843618382 Mataram Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 69
+  DATE: 2025-02-16
+  TYPE: DB
+  AMT : 14000000.00
+  BAL : 151584.67
+  CP  : [MIMI SOEJONO]
+  RAW : Transfer BI Fast Ke BCA MIMI SOEJONO 5000591833 Transfer BI Fast Dari BCA
+----------------------------------------------
+TX 70
+  DATE: 2025-02-21
+  TYPE: CR
+  AMT : 1000000.00
+  BAL : 1151584.67
+  CP  : [BILGUS MISTISON]
+  RAW : MIMI SOEJONO 5000591833 Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419 21 Feb 2025 Pembayaran Xendit 88908
+----------------------------------------------
+TX 71
+  DATE: 2025-02-21
+  TYPE: DB
+  AMT : 1001500.00
+  BAL : 150084.67
+  CP  : [BANK MANDIRI]
+  RAW : BILGUS MISTISON 3991289419 21 Feb 2025 Pembayaran Xendit 88908 889081866353115 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 72
+  DATE: 2025-02-22
+  TYPE: CR
+  AMT : 3000000.00
+  BAL : 3150084.67
+  CP  : [HENDRI SUSANTO]
+  RAW : 889081866353115 Transfer dari BANK MANDIRI HENDRI SUSANTO 700010775091 23 Feb 2025 Biaya penggantian kartu ATM
+----------------------------------------------
+TX 73
+  DATE: 2025-02-23
+  TYPE: DB
+  AMT : 20000.00
+  BAL : 3130084.67
+  CP  : [FINNET INDONESIA,]
+  RAW : HENDRI SUSANTO 700010775091 23 Feb 2025 Biaya penggantian kartu ATM Bank Mandiri KCP Jakarta ITC Mangga Dua 23 Feb 2025 Pembayaran Finnet Indonesia, PT
+----------------------------------------------
+TX 74
+  DATE: 2025-02-23
+  TYPE: DB
+  AMT : 650000.00
+  BAL : 2480084.67
+  CP  : [BANK MANDIRI]
+  RAW : Bank Mandiri KCP Jakarta ITC Mangga Dua 23 Feb 2025 Pembayaran Finnet Indonesia, PT 880442000176481 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 75
+  DATE: 2025-02-26
+  TYPE: CR
+  AMT : 1000000.00
+  BAL : 3480084.67
+  CP  : [JOKO MULYANTO]
+  RAW : 880442000176481 Transfer dari BANK MANDIRI JOKO MULYANTO 1290010510036 Transfer BI Fast
+----------------------------------------------
+TX 76
+  DATE: 2025-02-27
+  TYPE: CR
+  AMT : 70000000.00
+  BAL : 73480084.67
+  CP  : [ZAINAL ABIDIN]
+  RAW : JOKO MULYANTO 1290010510036 Transfer BI Fast Dari BANK BNI ZAINAL ABIDIN 0843618382
+----------------------------------------------
+TX 77
+  DATE: 2025-02-28
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 73477584.67
+  CP  : [BIAYA TRANSFER]
+  RAW : ZAINAL ABIDIN 0843618382 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 78
+  DATE: 2025-02-28
+  TYPE: DB
+  AMT : 70000000.00
+  BAL : 3477584.67
+  CP  : [MIMI SOEJONO]
+  RAW : Transfer BI Fast Ke BCA MIMI SOEJONO 5000591833 8 Feb 2025 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 79
+  DATE: 2025-02-08
+  TYPE: CR
+  AMT : 100000000.00
+  BAL : 103477584.67
+  CP  : [2 ANDRY ARDIANSYAH]
+  RAW : MIMI SOEJONO 5000591833 8 Feb 2025 Transfer dari BANK MANDIRI 2 ANDRY ARDIANSYAH 1230006381836
+----------------------------------------------
+TX 80
+  DATE: 2025-02-28
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 103475084.67
+  CP  : [BIAYA TRANSFER]
+  RAW : ANDRY ARDIANSYAH 1230006381836 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 81
+  DATE: 2025-02-28
+  TYPE: DB
+  AMT : 103300000.00
+  BAL : 175084.67
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 82
+  DATE: 2025-02-28
+  TYPE: DB
+  AMT : 12500.00
+  BAL : 162584.67
+  CP  : [BIAYA ADMINISTRASI REKENING]
+  RAW : BILGUS MISTISON 33331808 Biaya administrasi rekening
+----------------------------------------------
+TX 83
+  DATE: 2025-02-28
+  TYPE: DB
+  AMT : 25000.00
+  BAL : 137584.67
+  CP  : [BIAYA SALDO MINIMUM]
+  RAW : Biaya saldo minimum
+----------------------------------------------
+TX 84
+  DATE: 2025-02-28
+  TYPE: CR
+  AMT : 2318.38
+  BAL : 139903.05
+  CP  : [INTEREST]
+  RAW : Bunga rekening from Bank Mandiri. 2. Segala bentuk penggunaan e-Statement ini menjadi tanggung jawab Nasabah sepenuhnya./All forms of usage of this e-Statement are the Customer's role responsibility
+----------------------------------------------
+TX 85
+  DATE: 2025-03-01
+  TYPE: CR
+  AMT : 4000000.00
+  BAL : 4139903.05
+  CP  : [FROM BANK MANDIRI SEGALA BENTUK PENGGUNAAN STATEMENT INI MENJADI TANGGUNG JAWAB NASABAH SEPENUHNYA ALL FORMS OF USAGE OF THIS STATEMENT ARE THE CUSTOMER ROLE RESPONSIBILITY]
+  RAW : from Bank Mandiri. 2. Segala bentuk penggunaan e-Statement ini menjadi tanggung jawab Nasabah sepenuhnya./All forms of usage of this e-Statement are the Customer's role responsibility
+----------------------------------------------
+TX 86
+  DATE: 2025-03-01
+  TYPE: CR
+  AMT : 145000000.00
+  BAL : 149139903.05
+  CP  : [DWI PUDJI IRAWATI]
+  RAW : JOKO MULYANTO 1290010510036 01 Mar 2025 Transfer dari BANK MANDIRI DWI PUDJI IRAWATI 1170004149563
+----------------------------------------------
+TX 87
+  DATE: 2025-03-02
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 149137403.05
+  CP  : [BIAYA TRANSFER]
+  RAW : DWI PUDJI IRAWATI 1170004149563 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 88
+  DATE: 2025-03-02
+  TYPE: DB
+  AMT : 149000000.00
+  BAL : 137403.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 89
+  DATE: 2025-03-02
+  TYPE: CR
+  AMT : 145000000.00
+  BAL : 145137403.05
+  CP  : [DWI PUDJI IRAWATI]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI DWI PUDJI IRAWATI 1170004149563 pelunasan mobil hyundai creta
+----------------------------------------------
+TX 90
+  DATE: 2025-03-02
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 145134903.05
+  CP  : [BIAYA TRANSFER]
+  RAW : pelunasan mobil hyundai creta Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 91
+  DATE: 2025-03-02
+  TYPE: DB
+  AMT : 145000000.00
+  BAL : 134903.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 92
+  DATE: 2025-03-04
+  TYPE: CR
+  AMT : 5000000.00
+  BAL : 5134903.05
+  CP  : [BENNY BONGKRIWAN]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI BENNY BONGKRIWAN 1410005134457 B 2434 KIF Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 93
+  DATE: 2025-03-04
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 15134903.05
+  CP  : [IMAM SAMSIDI]
+  RAW : B 2434 KIF Transfer dari BANK MANDIRI IMAM SAMSIDI 1010001039013 05 Mar 2025 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 94
+  DATE: 2025-03-05
+  TYPE: CR
+  AMT : 1500000.00
+  BAL : 16634903.05
+  CP  : [SUPRIYONO]
+  RAW : IMAM SAMSIDI 1010001039013 05 Mar 2025 Transfer dari BANK MANDIRI SUPRIYONO 1200013041012 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 95
+  DATE: 2025-03-05
+  TYPE: CR
+  AMT : 63500000.00
+  BAL : 80134903.05
+  CP  : [IMAM SAMSIDI]
+  RAW : SUPRIYONO 1200013041012 Transfer dari BANK MANDIRI IMAM SAMSIDI 1010001039013
+----------------------------------------------
+TX 96
+  DATE: 2025-03-05
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 80132403.05
+  CP  : [BIAYA TRANSFER]
+  RAW : IMAM SAMSIDI 1010001039013 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 97
+  DATE: 2025-03-05
+  TYPE: DB
+  AMT : 80000000.00
+  BAL : 132403.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 08 Mar 2025 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 98
+  DATE: 2025-03-08
+  TYPE: CR
+  AMT : 45000000.00
+  BAL : 45132403.05
+  CP  : [JOKO MULYANTO]
+  RAW : BILGUS MISTISON 33331808 08 Mar 2025 Transfer dari BANK MANDIRI JOKO MULYANTO 1290010510036 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 99
+  DATE: 2025-03-08
+  TYPE: CR
+  AMT : 155000000.00
+  BAL : 200132403.05
+  CP  : [SUMARMI]
+  RAW : JOKO MULYANTO 1290010510036 Transfer dari BANK MANDIRI SUMARMI 1560009922891 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 100
+  DATE: 2025-03-08
+  TYPE: DB
+  AMT : 200000000.00
+  BAL : 132403.05
+  CP  : [SRI REJEKI]
+  RAW : SUMARMI 1560009922891 Transfer ke BANK MANDIRI SRI REJEKI 1550010522749 Innova G diesel 2022 A 1796 EG 09 Mar 2025 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 101
+  DATE: 2025-03-09
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 10132403.05
+  CP  : [AGUS SUKINDAR]
+  RAW : Innova G diesel 2022 A 1796 EG 09 Mar 2025 Transfer dari BANK MANDIRI AGUS SUKINDAR 1290011703390 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 102
+  DATE: 2025-03-12
+  TYPE: CR
+  AMT : 7000000.00
+  BAL : 17132403.05
+  CP  : [IRFAN BUDIANTO]
+  RAW : AGUS SUKINDAR 1290011703390 Transfer dari BANK MANDIRI IRFAN BUDIANTO 1320014468434 outlander
+----------------------------------------------
+TX 103
+  DATE: 2025-03-13
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 17129903.05
+  CP  : [BIAYA TRANSFER]
+  RAW : outlander Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 104
+  DATE: 2025-03-13
+  TYPE: DB
+  AMT : 17000000.00
+  BAL : 129903.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 3991289419 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 105
+  DATE: 2025-03-14
+  TYPE: CR
+  AMT : 5000000.00
+  BAL : 5129903.05
+  CP  : [BCA]
+  RAW : BILGUS MISTISON 3991289419 Transfer dari BANK MANDIRI PROBIAN TAFTAYANI 1240005580817 Tanda jadi cx5 b2434kif Transfer BI Fast Dari BCA
+----------------------------------------------
+TX 106
+  DATE: 2025-03-17
+  TYPE: CR
+  AMT : 15000000.00
+  BAL : 20129903.05
+  CP  : [BILGUS MISTISON]
+  RAW : Tanda jadi cx5 b2434kif Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419 Pembayaran kartu kredit
+----------------------------------------------
+TX 107
+  DATE: 2025-03-17
+  TYPE: DB
+  AMT : 19710689.00
+  BAL : 419214.05
+  CP  : [BANK MANDIRI]
+  RAW : BILGUS MISTISON 3991289419 Pembayaran kartu kredit 4149313001641522 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 108
+  DATE: 2025-03-17
+  TYPE: CR
+  AMT : 4000000.00
+  BAL : 4419214.05
+  CP  : [ARIS PRIYANTO]
+  RAW : 4149313001641522 Transfer dari BANK MANDIRI ARIS PRIYANTO 1200009820551 18 Mar 2025 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 109
+  DATE: 2025-03-18
+  TYPE: DB
+  AMT : 500000.00
+  BAL : 3919214.05
+  CP  : [GO TJOEN SIANG]
+  RAW : ARIS PRIYANTO 1200009820551 18 Mar 2025 Transfer ke BANK MANDIRI GO TJOEN SIANG 1200010697980
+----------------------------------------------
+TX 110
+  DATE: 2025-03-18
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 3916714.05
+  CP  : [BIAYA TRANSFER]
+  RAW : GO TJOEN SIANG 1200010697980 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 111
+  DATE: 2025-03-18
+  TYPE: DB
+  AMT : 3800000.00
+  BAL : 116714.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 112
+  DATE: 2025-03-20
+  TYPE: CR
+  AMT : 1000000.00
+  BAL : 1116714.05
+  CP  : [AHMAD RIFAI]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI AHMAD RIFAI 9000021999249 booking mobil secend Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 113
+  DATE: 2025-03-22
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 11116714.05
+  CP  : [ANTONYUS CUCUNG HEND]
+  RAW : booking mobil secend Transfer dari BANK MANDIRI ANTONYUS CUCUNG HEND 1650002865302 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 114
+  DATE: 2025-03-22
+  TYPE: CR
+  AMT : 5000000.00
+  BAL : 16116714.05
+  CP  : [ADIL JATMIKO]
+  RAW : ANTONYUS CUCUNG HEND 1650002865302 Transfer dari BANK MANDIRI ADIL JATMIKO 1660001541010 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 115
+  DATE: 2025-03-23
+  TYPE: DB
+  AMT : 5000000.00
+  BAL : 11116714.05
+  CP  : [RONALD FERRY SILAEN]
+  RAW : ADIL JATMIKO 1660001541010 Transfer ke BANK MANDIRI RONALD FERRY SILAEN 60005199678 Dp Vrz trd 2018 putih B 1586 PJN
+----------------------------------------------
+TX 116
+  DATE: 2025-03-23
+  TYPE: DB
+  AMT : 8500.00
+  BAL : 11108214.05
+  CP  : [BANK MANDIRI]
+  RAW : Dp Vrz trd 2018 putih B 1586 PJN Biaya administrasi kartu debit Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 117
+  DATE: 2025-03-24
+  TYPE: CR
+  AMT : 10000000.00
+  BAL : 21108214.05
+  CP  : [TONY NURDIANSYAH]
+  RAW : Transfer dari BANK MANDIRI TONY NURDIANSYAH 1080007653240 Pelunasan Palisade an Tony
+----------------------------------------------
+TX 118
+  DATE: 2025-03-24
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 21105714.05
+  CP  : [BIAYA TRANSFER]
+  RAW : Pelunasan Palisade an Tony Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 119
+  DATE: 2025-03-24
+  TYPE: DB
+  AMT : 21000000.00
+  BAL : 105714.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 120
+  DATE: 2025-03-25
+  TYPE: CR
+  AMT : 15000000.00
+  BAL : 15105714.05
+  CP  : [ADIL JATMIKO]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI ADIL JATMIKO 1200004917378 Transfer ke BANK MANDIRI
+----------------------------------------------
+TX 121
+  DATE: 2025-03-25
+  TYPE: DB
+  AMT : 5000000.00
+  BAL : 10105714.05
+  CP  : [PROBIAN TAFTAYANI]
+  RAW : ADIL JATMIKO 1200004917378 Transfer ke BANK MANDIRI PROBIAN TAFTAYANI 1240005580817 Refund dp Cx5
+----------------------------------------------
+TX 122
+  DATE: 2025-03-26
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 10103214.05
+  CP  : [BIAYA TRANSFER]
+  RAW : Refund dp Cx5 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 123
+  DATE: 2025-03-26
+  TYPE: DB
+  AMT : 10000000.00
+  BAL : 103214.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI
+----------------------------------------------
+TX 124
+  DATE: 2025-03-27
+  TYPE: CR
+  AMT : 290000000.00
+  BAL : 290103214.05
+  CP  : [ANTONYUS CUCUNG HEND]
+  RAW : BILGUS MISTISON 33331808 Transfer dari BANK MANDIRI ANTONYUS CUCUNG HEND 1650002865302
+----------------------------------------------
+TX 125
+  DATE: 2025-03-27
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 290100714.05
+  CP  : [BIAYA TRANSFER]
+  RAW : ANTONYUS CUCUNG HEND 1650002865302 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 126
+  DATE: 2025-03-27
+  TYPE: DB
+  AMT : 250000000.00
+  BAL : 40100714.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 127
+  DATE: 2025-03-28
+  TYPE: DB
+  AMT : 2500.00
+  BAL : 40098214.05
+  CP  : [BIAYA TRANSFER]
+  RAW : BILGUS MISTISON 33331808 Biaya transfer BI Fast Transfer BI Fast
+----------------------------------------------
+TX 128
+  DATE: 2025-03-28
+  TYPE: DB
+  AMT : 40000000.00
+  BAL : 98214.05
+  CP  : [BILGUS MISTISON]
+  RAW : Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+----------------------------------------------
+TX 129
+  DATE: 2025-03-31
+  TYPE: DB
+  AMT : 12500.00
+  BAL : 85714.05
+  CP  : [BIAYA ADMINISTRASI REKENING]
+  RAW : BILGUS MISTISON 33331808 Biaya administrasi rekening
+----------------------------------------------
+TX 130
+  DATE: 2025-03-31
+  TYPE: DB
+  AMT : 333.22
+  BAL : 85380.83
+  CP  : [TAX]
+  RAW : Pajak rekening
+----------------------------------------------
+TX 131
+  DATE: 2025-03-31
+  TYPE: DB
+  AMT : 25000.00
+  BAL : 60380.83
+  CP  : [BIAYA SALDO MINIMUM]
+  RAW : Biaya saldo minimum
+----------------------------------------------
+TX 132
+  DATE: 2025-03-31
+  TYPE: CR
+  AMT : 1666.11
+  BAL : 62046.94
+  CP  : [INTEREST]
+  RAW : Bunga rekening from Bank Mandiri. 2. Segala bentuk penggunaan e-Statement ini menjadi tanggung jawab Nasabah sepenuhnya./All forms of usage of this e-Statement are the Customer's role responsibility
+----------------------------------------------
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.36 s -- in com.example.mutexa_be.MandiriVerificationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  14.731 s
+[INFO] Finished at: 2026-04-14T15:00:38+07:00
+[INFO] ------------------------------------------------------------------------
