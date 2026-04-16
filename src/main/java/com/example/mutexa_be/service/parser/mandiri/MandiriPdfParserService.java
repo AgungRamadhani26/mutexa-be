@@ -11,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.TextPosition;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -22,31 +24,25 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Matcher;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * Parser untuk e-Statement Mandiri (Livin').
- *
- * PDFBox dengan setSortByPosition(true) menghasilkan baris inti dengan format:
- * [NoUrut] [DD Mon YYYY] [teks opsional] [+-Nominal] [Saldo]
- *
- * Contoh baris inti dari PDFBox:
- * "1 03 Jan 2025 +100.000.000,00 115.120.997,10"
- * "2 04 Jan 2025 DESSY ARIZTIA SAVITR 1010006427981 +95.000.000,00
- * 210.120.997,10"
- * "5 07 Jan 2025 Biaya transfer BI Fast -2.500,00 282.618.497,10"
- * "10 +10.700.000,00 18.815.997,10" (tanggal pada baris sebelumnya)
- *
- * Konteks tambahan (before/after):
- * - Before: label transfer ("Transfer BI Fast", "Transfer dari BANK MANDIRI"),
- * arah ("Ke BRI", "Dari BCA")
- * - After: waktu (HH:mm:ss WIB), nama counterparty, deskripsi tambahan
+ * Mandiri Livin' e-Statement PDF Parser.
+ * <p>
+ * Uses <b>position-based column extraction</b> instead of PDFBox getText().
+ * Each character is classified into a column (No, Tanggal, Keterangan, Nominal,
+ * Saldo)
+ * based on its X coordinate, completely eliminating the text fragmentation
+ * issues
+ * inherent in PDFBox's line-merging heuristics.
+ * <p>
+ * Column boundaries derived from the e-Statement header positions:
+ * 
+ * <pre>
+ *   No       Tanggal     Keterangan         Nominal        Saldo
+ *   X<45     45≤X<115    115≤X<355          355≤X<500      X≥500
+ * </pre>
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -60,536 +56,481 @@ public class MandiriPdfParserService implements PdfParserService {
         return "MANDIRI";
     }
 
-    // === REGEX PATTERNS ===
+    // =====================================================================
+    // COLUMN X BOUNDARIES
+    // =====================================================================
+    private static final float COL_DATE_START = 45f;
+    private static final float COL_DESC_START = 115f;
+    private static final float COL_NOM_START = 355f;
+    private static final float COL_SAL_START = 500f;
 
-    /**
-     * Mendeteksi "baris inti" transaksi (v2 - disesuaikan dengan output PDFBox).
-     * Format PDFBOX: [NoUrut] [DD Mon YYYY opsional] [teks opsional] [+-nominal]
-     * [saldo]
-     * Tanggal bisa ada di dalam baris inti, atau tidak ada sama sekali.
-     *
-     * Yang penting: baris diakhiri dengan [+-]nominal [saldo].
-     * Group 1: nomor urut (1-3 digit)
-     * Group 2: sisa teks (tanggal + head text) — akan diparsing terpisah
-     * Group 3: nominal (+/-)
-     * Group 4: saldo
-     */
-    private static final Pattern CORE_LINE_PATTERN = Pattern.compile(
-            "^\\s*(\\d{1,3})\\s+(.*?)\\s*([+-]\\d[\\d.]*,\\d{2})\\s+(\\d[\\d.]*,\\d{2})\\s*$");
+    // Row grouping: chars within this Y tolerance belong to the same visual row
+    private static final float Y_ROW_TOLERANCE = 2.0f;
 
-    /**
-     * Mendeteksi tanggal Mandiri: DD Mon YYYY (misal "03 Jan 2025" atau "8 Feb
-     * 2025")
-     * Toleransi terhadap spasi tambahan akibat kolom terpisah (misal "20 5", "202
-     * ")
-     */
-    private static final Pattern DATE_PATTERN = Pattern.compile(
-            "(\\d{1,2}\\s+[A-Za-z]{3}\\s+\\d{2}(?:\\s*\\d{1,2})?)");
+    // Visual Y gap that indicates a new transaction block
+    private static final float TX_BOUNDARY_GAP = 18f;
 
-    /**
-     * Mendeteksi baris yang DIMULAI dengan tanggal: "DD Mon YYYY [sisa teks]"
-     * Dipakai untuk mendeteksi baris before-context yang berisi tanggal
-     * ketika tanggal berada pada baris terpisah (bukan di dalam core line).
-     */
-    private static final Pattern STANDALONE_DATE_LINE = Pattern.compile(
-            "^\\d{1,2}\\s+[A-Za-z]{3}\\s+\\d{4}(?:\\s+.*)?$");
+    // Patterns
+    private static final Pattern DATE_PAT = Pattern.compile(
+            "\\d{1,2}\\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{4}",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern TIME_PAT = Pattern.compile(
+            "\\d{2}:\\d{2}:\\d{2}\\s*WIB");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
 
-    /**
-     * Mendeteksi baris waktu: HH:mm:ss WIB [sisa teks opsional]
-     */
-    private static final Pattern TIME_PATTERN = Pattern.compile(
-            "^(\\d{2}:\\d{2}:\\d{2})\\s*WIB(.*)$");
+    // =====================================================================
+    // DATA CLASSES
+    // =====================================================================
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
+    /** Character with its PDF position metadata. */
+    private static class CharInfo {
+        final float x, y, charWidth, spaceWidth;
+        final int page;
+        final String ch;
 
-    /** Bulan Indonesia ke English mapping */
-    private static final Map<String, String> MONTH_MAP = Map.ofEntries(
-            Map.entry("JAN", "Jan"), Map.entry("FEB", "Feb"), Map.entry("MAR", "Mar"),
-            Map.entry("APR", "Apr"), Map.entry("MEI", "May"), Map.entry("MAY", "May"),
-            Map.entry("JUN", "Jun"), Map.entry("JUL", "Jul"), Map.entry("AGU", "Aug"),
-            Map.entry("AUG", "Aug"), Map.entry("SEP", "Sep"), Map.entry("OKT", "Oct"),
-            Map.entry("OCT", "Oct"), Map.entry("NOV", "Nov"), Map.entry("DES", "Dec"),
-            Map.entry("DEC", "Dec"));
+        CharInfo(float x, float y, float charWidth, float spaceWidth, int page, String ch) {
+            this.x = x;
+            this.y = y;
+            this.charWidth = charWidth > 0 ? charWidth : 3f;
+            this.spaceWidth = spaceWidth > 0 ? spaceWidth : 3f;
+            this.page = page;
+            this.ch = ch;
+        }
+    }
 
-    // ===================================================================
-    // PUBLIC ENTRY POINT
-    // ===================================================================
+    /** One visual row with text separated by column. */
+    private static class ColRow {
+        float absY; // page*10000 + y, for absolute ordering across pages
+        String no = "", date = "", desc = "", nominal = "", saldo = "";
+
+        boolean isCoreRow() {
+            return !no.isEmpty() && no.matches("\\d+")
+                    && !nominal.isEmpty() && nominal.matches("[+\\-]?[\\d.,]+");
+        }
+
+        boolean hasDate() {
+            return DATE_PAT.matcher(date).find();
+        }
+
+        boolean hasTime() {
+            return TIME_PAT.matcher(date).find();
+        }
+
+        String fullText() {
+            return (no + " " + date + " " + desc + " " + nominal + " " + saldo).trim().toLowerCase();
+        }
+    }
+
+    /** Raw transaction data before entity conversion. */
+    private static class RawTx {
+        LocalDate date;
+        final List<String> descParts = new ArrayList<>();
+        String nominalStr = "";
+        String saldoStr = "";
+    }
+
+    // =====================================================================
+    // MAIN PARSE METHOD
+    // =====================================================================
 
     @Override
     public List<BankTransaction> parse(MutationDocument document, String filePath) {
-        List<BankTransaction> transactions = new ArrayList<>();
         File file = new File(filePath);
-
         if (!file.exists()) {
             throw new IllegalArgumentException("File PDF Mandiri tidak ditemukan: " + filePath);
         }
 
-        try (PDDocument pdfDocument = Loader.loadPDF(file)) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setSortByPosition(true);
+        try (PDDocument pdf = Loader.loadPDF(file)) {
+            List<CharInfo> chars = collectChars(pdf); // Phase 1
+            List<ColRow> rows = buildColumnRows(chars); // Phase 2
+            rows = filterNonData(rows); // Phase 3
+            List<RawTx> rawTxs = assembleTransactions(rows); // Phase 4
+            List<BankTransaction> result = toEntities(rawTxs, document); // Phase 5
 
-            String entireText = stripper.getText(pdfDocument);
-            transactions = extractTransactions(document, entireText);
-
-            log.info("Berhasil mem-parsing PDF Mandiri. Ditemukan {} buah transaksi.", transactions.size());
+            log.info("Berhasil mem-parsing PDF Mandiri. Ditemukan {} buah transaksi.", result.size());
+            return result;
         } catch (Exception e) {
-            log.error("Terjadi masalah saat parsing PDF Mandiri: {}", e.getMessage(), e);
-            throw new RuntimeException("Gagal melakukan parsing dokumen PDF Mandiri.", e);
+            log.error("Gagal parsing PDF Mandiri: {}", e.getMessage(), e);
+            throw new RuntimeException("Gagal parsing PDF Mandiri.", e);
+        }
+    }
+
+    // =====================================================================
+    // PHASE 1: COLLECT CHARACTER POSITIONS
+    // =====================================================================
+
+    private List<CharInfo> collectChars(PDDocument pdf) throws IOException {
+        CharExtractor ex = new CharExtractor();
+        ex.setSortByPosition(true);
+        ex.getText(pdf);
+        return ex.result;
+    }
+
+    /**
+     * Custom PDFTextStripper that captures every character with its X/Y position.
+     */
+    private static class CharExtractor extends PDFTextStripper {
+        final List<CharInfo> result = new ArrayList<>();
+
+        CharExtractor() throws IOException {
+            super();
         }
 
+        @Override
+        protected void processTextPosition(TextPosition tp) {
+            float y = tp.getYDirAdj();
+            // Filter out exact page header and footer regions (where garbled text occurs)
+            if (y < 150f || y > 800f) {
+                return;
+            }
+
+            String ch = tp.getUnicode();
+            if (ch != null && !ch.isEmpty()) {
+                result.add(new CharInfo(
+                        tp.getXDirAdj(), y,
+                        tp.getWidthDirAdj(), tp.getWidthOfSpace(),
+                        getCurrentPageNo(), ch));
+            }
+        }
+    }
+
+    // =====================================================================
+    // PHASE 2: GROUP CHARS INTO COLUMN-SPLIT ROWS
+    // =====================================================================
+
+    private List<ColRow> buildColumnRows(List<CharInfo> chars) {
+        // Group characters by (page, Y) with tolerance
+        TreeMap<Float, List<CharInfo>> groups = new TreeMap<>();
+        for (CharInfo c : chars) {
+            float key = c.page * 10000f + c.y;
+            Float existing = groups.floorKey(key + Y_ROW_TOLERANCE);
+            if (existing != null && Math.abs(existing - key) <= Y_ROW_TOLERANCE) {
+                groups.get(existing).add(c);
+            } else {
+                List<CharInfo> list = new ArrayList<>();
+                list.add(c);
+                groups.put(key, list);
+            }
+        }
+
+        // Convert each group into a ColRow with per-column text
+        List<ColRow> rows = new ArrayList<>();
+        for (var entry : groups.entrySet()) {
+            List<CharInfo> rowChars = entry.getValue();
+            rowChars.sort(Comparator.comparingDouble(c -> c.x));
+
+            ColRow row = new ColRow();
+            row.absY = entry.getKey();
+
+            // Per-column text builders with spacing tracking
+            StringBuilder[] sbs = new StringBuilder[5];
+            float[] prevX = new float[5];
+            float[] prevW = new float[5];
+            float[] prevSW = new float[5];
+            for (int i = 0; i < 5; i++) {
+                sbs[i] = new StringBuilder();
+                prevX[i] = -999;
+                prevW[i] = 0;
+                prevSW[i] = 3f;
+            }
+
+            for (CharInfo c : rowChars) {
+                int col = classifyColumn(c.x);
+                StringBuilder sb = sbs[col];
+
+                // Insert space based on gap between end of previous char and start of this one
+                if (prevX[col] > -900) {
+                    float endPrev = prevX[col] + prevW[col];
+                    float gap = c.x - endPrev;
+                    float spW = Math.max(c.spaceWidth, prevSW[col]);
+                    if (gap > spW * 0.5f) {
+                        sb.append(' ');
+                    }
+                }
+                sb.append(c.ch);
+                prevX[col] = c.x;
+                prevW[col] = c.charWidth;
+                prevSW[col] = c.spaceWidth;
+            }
+
+            row.no = sbs[0].toString().trim();
+            row.date = sbs[1].toString().trim();
+            row.desc = sbs[2].toString().trim();
+            row.nominal = sbs[3].toString().trim();
+            row.saldo = sbs[4].toString().trim();
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /**
+     * Classify an X coordinate into a column index (0=No, 1=Date, 2=Desc,
+     * 3=Nominal, 4=Saldo).
+     */
+    private int classifyColumn(float x) {
+        if (x < COL_DATE_START)
+            return 0;
+        if (x < COL_DESC_START)
+            return 1;
+        if (x < COL_NOM_START)
+            return 2;
+        if (x < COL_SAL_START)
+            return 3;
+        return 4;
+    }
+
+    // =====================================================================
+    // PHASE 3: FILTER OUT HEADERS, FOOTERS, AND DISCLAIMERS
+    // =====================================================================
+
+    private List<ColRow> filterNonData(List<ColRow> rows) {
+        List<ColRow> out = new ArrayList<>();
+        boolean inDisclaimer = false;
+
+        for (ColRow r : rows) {
+            String ft = r.fullText();
+            if (ft.isBlank() || ft.equals("-"))
+                continue;
+
+            // Disclaimer mode toggle
+            if (ft.contains("batas akhir transaksi") || ft.equals("disclaimer")) {
+                inDisclaimer = true;
+                continue;
+            }
+            if (ft.contains("saldo awal") || ft.contains("initial balance")) {
+                inDisclaimer = false;
+                continue;
+            }
+            if (inDisclaimer)
+                continue;
+
+            if (isHeaderOrFooter(ft))
+                continue;
+
+            // Standalone number in No column with nothing else (page number residue)
+            if (r.no.matches("\\d+") && r.date.isEmpty() && r.desc.isEmpty()
+                    && r.nominal.isEmpty() && r.saldo.isEmpty())
+                continue;
+
+            out.add(r);
+        }
+        return out;
+    }
+
+    private boolean isHeaderOrFooter(String ft) {
+        // Strip all spaces to catch heavily fragmented texts like "T a b u n g a n"
+        String spaceless = ft.replaceAll("\\s+", "").toLowerCase();
+        return (spaceless.contains("estatement") && spaceless.length() < 25)
+                || spaceless.contains("menaramandiri") || spaceless.contains("plazamandiri")
+                || spaceless.contains("nama/name") || spaceless.contains("cabang/branch")
+                || spaceless.contains("tabungan") || spaceless.matches(".*\\d+of\\d+.*")
+                || spaceless.contains("saldoakhir") || spaceless.contains("closingbalance")
+                || spaceless.contains("nomorrekening") || spaceless.contains("accountnumber")
+                || spaceless.contains("matauang") || spaceless.contains("currency")
+                || spaceless.contains("danamasuk") || spaceless.contains("incomingtransaction")
+                || spaceless.contains("danakeluar") || spaceless.contains("outgoingtransaction")
+                || spaceless.contains("notanggalketerangan") || spaceless.contains("nodateremarks")
+                || spaceless.contains("ptbankmandiri") || spaceless.contains("mandiricall")
+                || spaceless.contains("sertamerupakanpeserta")
+                || spaceless.contains("estatementinimerupakan")
+                || spaceless.contains("segalabentukpenggunaan")
+                || spaceless.contains("nasabahdapatmengajukan")
+                || spaceless.contains("keberatanatas") || spaceless.contains("discrepancies")
+                || spaceless.contains("14harikalender") || spaceless.contains("14calendar")
+                || spaceless.contains("nasabahtunduk") || spaceless.contains("customer's")
+                || spaceless.contains("frombankmandiri") || spaceless.contains("pejabatbank")
+                || spaceless.contains("objectionsregarding") || spaceless.contains("boundbythelivin")
+                || spaceless.matches("^\\d+dari\\d+$");
+    }
+
+    // =====================================================================
+    // PHASE 4: ASSEMBLE ROWS INTO TRANSACTIONS
+    // =====================================================================
+
+    /**
+     * Groups rows into transactions using a forward scan with state tracking.
+     * <p>
+     * Transaction boundaries are detected by:
+     * <ul>
+     *   <li>Core rows (No + Nominal + Saldo filled)</li>
+     *   <li>Large Y gaps indicating visual separation between transaction blocks</li>
+     *   <li>Pending before-context accumulation (desc/date found before core)</li>
+     * </ul>
+     */
+    private List<RawTx> assembleTransactions(List<ColRow> rows) {
+        List<RawTx> transactions = new ArrayList<>();
+        RawTx current = null;
+        List<String> pendingDesc = new ArrayList<>();
+        LocalDate pendingDate = null;
+        float lastAbsY = -99999f;
+
+        for (ColRow r : rows) {
+            float gap = r.absY - lastAbsY;
+
+            if (r.isCoreRow()) {
+                // ── CORE ROW: Finalize previous TX, start new one ──
+                if (current != null) transactions.add(current);
+
+                current = new RawTx();
+                current.nominalStr = r.nominal;
+                current.saldoStr = r.saldo;
+
+                // Date: prefer pending (from before-context), fallback to core row's own
+                if (pendingDate != null) {
+                    current.date = pendingDate;
+                } else if (r.hasDate()) {
+                    current.date = parseDate(r.date);
+                }
+
+                // Description: prepend pending before-context, then core's own desc
+                current.descParts.addAll(pendingDesc);
+                if (!r.desc.isEmpty()) current.descParts.add(r.desc);
+
+                pendingDesc.clear();
+                    
+                pendingDate = null;
+
+            } else if (r.hasDate()) {
+                // ── DATE ROW: Save as pending for next core row ──
+                pendingDate = parseDate(r.date);
+                if (!r.desc.isEmpty()) pendingDesc.add(r.desc);
+
+            } else if (r.hasTime()) {
+                    
+                // ── TIME ROW: After-context for current transaction ──
+                if (current != null && !r.desc.isEmpty()) {
+                    current.descParts.add(r.desc);
+                }
+
+            } else if (!r.desc.isEmpty()) {
+                // ── DESCRIPTION-ONLY ROW ──
+                // Determine if this is after-context (current TX) or before-context (next TX)
+                boolean isBeforeContext =
+                        current == null              // no transaction yet
+                        || pendingDate != null       // date already found for next TX
+                        || !pendingDesc.isEmpty()    // already accumulating before-context
+                        || gap > TX_BOUNDARY_GAP;    // large visual gap = new block
+ 
+                if (isBeforeContext) { 
+                    pendingDesc.add(r.desc);
+                } else {
+                    current.descParts.add(r.desc);
+                }
+            }
+
+            lastAbsY = r.absY;
+        }
+
+        if (current != null) transactions.add(current);
         return transactions;
     }
+            
 
-    // ===================================================================
-    // CORE EXTRACTION ALGORITHM
-    // ===================================================================
+    // =====================================================================
+    // PHASE 5: CONVERT TO BANK TRANSACTION ENTITIES
+    // =====================================================================
 
-    private List<BankTransaction> extractTransactions(MutationDocument document, String entireText) {
-        List<BankTransaction> list = new ArrayList<>();
+    private List<BankTransaction> toEntities(List<RawTx> rawTxs, MutationDocument doc) {
+        List<BankTransaction> results = new ArrayList<>();
         Map<String, Integer> hashCounters = new HashMap<>();
 
-        String[] lines = entireText.split("\\r?\\n");
-
-        // === FASE 1: Identifikasi semua indeks baris inti ===
-        List<Integer> coreIndices = new ArrayList<>();
-        for (int i = 0; i < lines.length; i++) {
-            String trimmed = lines[i].trim();
-            if (isHeaderOrFooter(trimmed))
-                continue;
-            if (CORE_LINE_PATTERN.matcher(trimmed).matches()) {
-                coreIndices.add(i);
+        for (RawTx raw : rawTxs) {
+            // Date
+            LocalDate txDate = raw.date != null ? raw.date : LocalDate.now();
+            if (raw.date == null) {
+                log.warn("Tanggal transaksi Mandiri tidak ditemukan, fallback ke hari ini.");
             }
+
+            // Description
+            String rawDesc = String.join(" ", raw.descParts).replaceAll("\\s+", " ").trim();
+
+            // Nominal & type (+ = CR, - = DB)
+            String nomStr = raw.nominalStr.trim();
+            MutationType type;
+            if (nomStr.startsWith("+")) {
+                type = MutationType.CR; nomStr = nomStr.substring(1);
+            } else if (nomStr.startsWith("-")) {
+                type = MutationType.DB;
+                nomStr = nomStr.substring(1);
+            } else {
+                type = MutationType.DB;
+                
+            }
+
+            BigDecimal amount = parseIndonesianAmount(nomStr);
+            BigDecimal balance = parseIndonesianAmount(raw.saldoStr);
+
+            // Refinement
+            String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
+            String cpName = transactionRefinementService.extractCounterpartyName(
+                    "Mandiri", rawDesc, type == MutationType.CR);
+            TransactionCategory category = transactionRefinementService.categorizeTransaction(
+                    normalizedDesc, type == MutationType.CR);
+
+            // Hash (MD5, consistent with other parsers)
+            String baseHash = txDate + "_" + amount.toPlainString() + "_" + normalizedDesc;
+            int occ = hashCounters.getOrDefault(baseHash, 0);
+            hashCounters.put(baseHash, occ + 1);
+
+            results.add(BankTransaction.builder()
+                    .mutationDocument(doc)
+                    .bankAccount(doc.getBankAccount())
+                    .transactionDate(txDate)
+                    .rawDescription(rawDesc)
+                    .normalizedDescription(normalizedDesc)
+                    .counterpartyName(cpName)
+                    .mutationType(type)
+                    .amount(amount)
+                    .balance(balance)
+                    .category(category)
+                    .isExcluded(false)
+                    .duplicateHash(generateMd5Hash(baseHash + "_" + occ))
+                    .build());
         }
-
-        if (coreIndices.isEmpty()) {
-            log.warn("Tidak ditemukan baris transaksi dalam dokumen Mandiri.");
-            return list;
-        }
-
-        log.debug("Ditemukan {} baris inti transaksi.", coreIndices.size());
-
-        // === FASE 2 & 3: Kumpulkan konteks & bangun transaksi ===
-        int previousAfterEnd = 0;
-
-        for (int idx = 0; idx < coreIndices.size(); idx++) {
-            int currentCoreIdx = coreIndices.get(idx);
-            int nextCoreIdx = (idx < coreIndices.size() - 1)
-                    ? coreIndices.get(idx + 1)
-                    : lines.length;
-
-            // --- Parse baris inti ---
-            String coreLine = lines[currentCoreIdx].trim();
-            Matcher coreMatcher = CORE_LINE_PATTERN.matcher(coreLine);
-            if (!coreMatcher.matches())
-                continue;
-
-            String middleText = coreMatcher.group(2).trim(); // Bisa berisi: tanggal + head text
-            String amountStr = coreMatcher.group(3);
-            String balanceStr = coreMatcher.group(4);
-
-            // Pisahkan tanggal dan head text dari middleText
-            String coreDate = null;
-            String headText = middleText;
-
-            Matcher dateMatcher = DATE_PATTERN.matcher(middleText);
-            if (dateMatcher.find()) {
-                coreDate = dateMatcher.group(1);
-                // Head text adalah sisa setelah tanggal
-                headText = (middleText.substring(0, dateMatcher.start())
-                        + " " + middleText.substring(dateMatcher.end())).trim();
-            }
-
-            // --- Kumpulkan BEFORE context ---
-            List<String> beforeLines = new ArrayList<>();
-            for (int k = previousAfterEnd; k < currentCoreIdx; k++) {
-                String line = lines[k].trim();
-                if (!line.isEmpty() && !isHeaderOrFooter(line)) {
-                    beforeLines.add(line);
-                }
-            }
-
-            // --- Kumpulkan AFTER context ---
-            List<String> afterLines = new ArrayList<>();
-            previousAfterEnd = nextCoreIdx;
-
-            for (int k = currentCoreIdx + 1; k < nextCoreIdx; k++) {
-                String line = lines[k].trim();
-                if (line.isEmpty() || isHeaderOrFooter(line))
-                    continue;
-
-                if (isBeforeContextStart(line)) {
-                    previousAfterEnd = k;
-                    break;
-                }
-
-                afterLines.add(line);
-            }
-
-            // --- Ekstrak tanggal (prioritas: dari core line, lalu before context) ---
-            String dateStr = coreDate;
-            if (dateStr == null) {
-                dateStr = extractDateFromContext(beforeLines);
-            }
-
-            // --- Bangun raw description ---
-            String rawDesc = buildRawDescription(beforeLines, headText, afterLines);
-
-            // --- Bangun objek transaksi ---
-            BankTransaction tx = buildTransaction(
-                    document, dateStr, rawDesc, amountStr, balanceStr, hashCounters);
-            if (tx != null) {
-                list.add(tx);
-            }
-        }
-
-        return list;
+        return results;
     }
 
-    // ===================================================================
-    // BOUNDARY DETECTION
-    // ===================================================================
+    // =====================================================================
+    // UTILITY METHODS
+    // =====================================================================
 
-    /**
-     * Menentukan apakah sebuah baris menandai awal konteks transaksi berikutnya.
-     * Baris dianggap "awal konteks baru" jika:
-     * - Merupakan baris yang DIMULAI dengan tanggal (DD Mon YYYY)
-     * - Merupakan label tipe transfer (bukan "Transfer Fee")
-     * - Merupakan label arah transfer ("Dari BCA", "Ke BRI", "DARI MERPATI...")
-     */
-    private boolean isBeforeContextStart(String line) {
-        String trimmed = line.trim();
-
-        // Baris dimulai tanggal (cek sebelum kita menghapus digit depan!)
-        if (STANDALONE_DATE_LINE.matcher(trimmed).matches()) {
-            return true;
-        }
-
-        // Hapus digit di awal baris (misal: "2 Transfer dari BANK MANDIRI" -> "Transfer
-        // dari BANK MANDIRI")
-        // Ini sering terjadi karena PDFBox menggabungkan karakter yang terpisah pada
-        // layout
-        String cleanLine = trimmed.replaceAll("^\\d+\\s+", "").trim();
-        String upper = cleanLine.toUpperCase();
-
-        // Label tipe transfer
-        if (upper.startsWith("TRANSFER DARI ")
-                || upper.startsWith("TRANSFER KE ")
-                || upper.startsWith("TRANSFER BI FAST")
-                || upper.startsWith("TRANSFER ANTAR MANDIRI")) {
-            return true;
-        }
-
-        // Arah transfer pada baris tersendiri (output PDFBox bisa pisah "Dari BCA" /
-        // "Ke BRI")
-        if (upper.startsWith("DARI ") || upper.startsWith("KE ")) {
-            // Pastikan ini arah transfer, bukan deskripsi umum
-            if (upper.matches("^(DARI|KE)\\s+(BANK\\s+)?[A-Z]{2,}$")
-                    || upper.matches("^DARI\\s+[A-Z\\s]+$")) {
-                return true;
-            }
-        }
-
-        // Label "Pembayaran" standalone (sebelum core line)
-        // Hindari memotong pada "pembayaran" huruf kecil karena itu deskripsi user.
-        if (upper.startsWith("PEMBAYARAN ") && !cleanLine.startsWith("pembayaran")) {
-            return true;
-        }
-
-        return false;
-    }
-
-    // ===================================================================
-    // DATE EXTRACTION
-    // ===================================================================
-
-    /**
-     * Ekstrak tanggal dari baris-baris konteks sebelum.
-     * Baris before-context kadang berisi tanggal standalone: "04 Feb 2025 Transfer
-     * dari BANK MANDIRI"
-     */
-    private String extractDateFromContext(List<String> beforeLines) {
-        for (String line : beforeLines) {
-            Matcher dm = DATE_PATTERN.matcher(line);
-            if (dm.find()) {
-                return dm.group(1);
-            }
-        }
-        return null;
-    }
-
-    // ===================================================================
-    // RAW DESCRIPTION BUILDING
-    // ===================================================================
-
-    /**
-     * Membangun raw description dari konteks sebelum, teks kepala, dan konteks
-     * sesudah.
-     */
-    private String buildRawDescription(List<String> beforeLines, String headText, List<String> afterLines) {
-        StringBuilder sb = new StringBuilder();
-
-        // 1. Konteks sebelum (hilangkan tanggal & timestamp, pertahankan label
-        // transfer)
-        for (String line : beforeLines) {
-            // Bersihkan tanggal dahulu sebelum menghapus nomor bocor
-            String cleaned = removeDateFromLine(line);
-            cleaned = cleaned.replaceAll("^\\d+\\s+", "");
-            cleaned = removeTimeFromLine(cleaned);
-            if (!cleaned.isEmpty() && !cleaned.equals("-")) {
-                sb.append(cleaned).append(" ");
-            }
-        }
-
-        // 2. Teks kepala dari baris inti (sudah bebas tanggal dari parsing sebelumnya)
-        if (headText != null && !headText.isEmpty()) {
-            sb.append(headText).append(" ");
-        }
-
-        // 3. Konteks sesudah (hilangkan timestamp, abaikan dash tunggal)
-        for (String line : afterLines) {
-            String cleaned = removeTimeFromLine(line);
-            if (!cleaned.isEmpty() && !cleaned.equals("-")) {
-                sb.append(cleaned).append(" ");
-            }
-        }
-
-        return cleanFinalRawDesc(sb.toString().trim());
-    }
-
-    private String removeDateFromLine(String line) {
-        return DATE_PATTERN.matcher(line).replaceAll("").trim();
-    }
-
-    private String removeTimeFromLine(String line) {
-        Matcher m = TIME_PATTERN.matcher(line);
-        if (m.matches()) {
-            return m.group(2).trim();
-        }
-        return line.replaceAll("\\d{2}:\\d{2}:\\d{2}\\s*WIB", "").trim();
-    }
-
-    // ===================================================================
-    // TRANSACTION BUILDING
-    // ===================================================================
-
-    private BankTransaction buildTransaction(MutationDocument document, String dateStr,
-            String rawDesc, String amountStr, String balanceStr,
-            Map<String, Integer> hashCounters) {
-
-        boolean isCredit = amountStr.startsWith("+");
-        BigDecimal amount = parseIndonesianAmount(amountStr.substring(1));
-        BigDecimal balance = parseIndonesianAmount(balanceStr);
-
-        LocalDate txDate = parseDate(dateStr);
-
-        MutationType mutationType = isCredit ? MutationType.CR : MutationType.DB;
-
-        String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
-        String cpName = transactionRefinementService.extractCounterpartyName(
-                "MANDIRI", rawDesc, isCredit);
-        TransactionCategory category = transactionRefinementService.categorizeTransaction(
-                normalizedDesc, isCredit);
-
-        String baseHashStr = txDate.toString() + "_" + amount.toPlainString() + "_" + normalizedDesc;
-        int occurrence = hashCounters.getOrDefault(baseHashStr, 0);
-        hashCounters.put(baseHashStr, occurrence + 1);
-        String finalHash = generateHash(baseHashStr + "_" + occurrence);
-
-        return BankTransaction.builder()
-                .mutationDocument(document)
-                .bankAccount(document.getBankAccount())
-                .transactionDate(txDate)
-                .rawDescription(normalizedDesc)
-                .normalizedDescription(normalizedDesc)
-                .counterpartyName(cpName)
-                .mutationType(mutationType)
-                .amount(amount)
-                .balance(balance)
-                .category(category)
-                .isExcluded(false)
-                .duplicateHash(finalHash)
-                .build();
-    }
-
-    // ===================================================================
-    // AMOUNT & DATE PARSING
-    // ===================================================================
-
-    /**
-     * Parse nominal format Indonesia: titik sebagai pemisah ribuan, koma sebagai
-     * desimal.
-     * Contoh: "100.000.000,00" → 100000000.0000
-     */
-    private BigDecimal parseIndonesianAmount(String amountStr) {
-        if (amountStr == null || amountStr.trim().isEmpty())
-            return BigDecimal.ZERO;
+    private LocalDate parseDate(String s) {
+        if (s == null || s.isBlank()) return null;
         try {
-            String cleaned = amountStr.replace(".", "").replace(",", ".");
-            return new BigDecimal(cleaned).setScale(4, RoundingMode.HALF_UP);
-        } catch (NumberFormatException e) {
-            log.warn("Gagal parse nominal Mandiri: {}", amountStr);
-            return BigDecimal.ZERO;
-        }
-    }
-
-    /**
-     * Parse tanggal dari string "DD Mon YYYY".
-     * Mendukung bulan Indonesia & Inggris.
-     */
-    private LocalDate parseDate(String dateStr) {
-        if (dateStr == null) {
-            log.warn("Tanggal transaksi Mandiri tidak ditemukan, fallback ke hari ini.");
-            return LocalDate.now();
-        }
-        try {
-            // Perbaiki tahun yang terpisah karena PDFBox (misal: "20 5", "20 25")
-            String normalized = dateStr.replaceAll("\\b20\\s+([0-9])\\b", "202$1");
-            normalized = normalized.replaceAll("\\b20\\s+(2[0-9])\\b", "20$1");
-            // Tambahkan padding 0 untuk tanggal 1 digit (misal "8 Feb" -> "08 Feb")
-            normalized = normalized.replaceAll("^(\\d)\\s+", "0$1 ");
-            normalized = normalized.replaceAll("\\s+", " ").trim();
-
-            // Normalize Indonesian month names to English
-            String[] parts = normalized.split(" ");
-            if (parts.length == 3) {
-                String monthKey = parts[1].toUpperCase();
-                String engMonth = MONTH_MAP.get(monthKey);
-                if (engMonth != null) {
-                    normalized = parts[0] + " " + engMonth + " " + parts[2];
-                }
-            }
-
-            return LocalDate.parse(normalized, DATE_FORMATTER);
-        } catch (DateTimeParseException e) {
-            log.warn("Gagal parse tanggal Mandiri: {} -> fallback to now. Error: {}",
-                    dateStr, e.getMessage());
-            return LocalDate.now();
-        }
-    }
-
-    // ===================================================================
-    // DESCRIPTION CLEANUP
-    // ===================================================================
-
-    private String cleanFinalRawDesc(String rawDesc) {
-        if (rawDesc == null)
-            return "";
-
-        // Hapus sisa timestamp
-        String cleaned = rawDesc.replaceAll("\\d{2}:\\d{2}:\\d{2}\\s*(?:WIB)?", " ");
-
-        // Potong jika terdapat fragmen footer hukum
-        String[] footers = {
-                "pejabat Bank Mandri",
-                "This e-Statement",
-                "electronic document issued",
-                "valid for use without",
-                "from Bank Mandiri",
-                "Segala bentuk",
-                "All forms of usage",
-                "Nasabah dapat menyampaikan",
-                "objections regarding information",
-                "Nasabah tunduk pada",
-                "bound by the Livin",
-                "Electronic document generated",
-                "Dokumen ini dihasilkan secara",
-                "Customer's role responsibility",
-                "Customer's responsibility",
-                "role responsibility"
-        };
-
-        cleaned = cleaned.replaceAll("\\s{2,}", " ");
-
-        for (String f : footers) {
-            Pattern p = Pattern.compile("(?i)" + Pattern.quote(f));
-            Matcher m = p.matcher(cleaned);
+            // Extract just the date part (in case of trailing text)
+            var m = DATE_PAT.matcher(s.trim());
             if (m.find()) {
-                cleaned = cleaned.substring(0, m.start());
+                return LocalDate.parse(m.group(), DATE_FMT);
             }
+            return null;
+        } catch (DateTimeParseException e) {
+            log.warn("Gagal parse tanggal Mandiri: {} -> {}", s, e.getMessage());
+            return null;
         }
-
-        // Hapus trailing noise
-        cleaned = cleaned.replaceAll("[/., ]+$", "").trim();
-        cleaned = cleaned.replaceAll("\\s{2,}", " ");
-
-        return cleaned.trim();
     }
 
-    // ===================================================================
-    // HEADER/FOOTER FILTER
-    // ===================================================================
-
-    private boolean isHeaderOrFooter(String line) {
-        String ln = line.trim();
-        if (ln.isEmpty() || ln.equals("-"))
-            return true;
-
-        // Normalisasi spasi ganda untuk menghindari gagal match pada "Segala bentuk"
-        String lnNorm = ln.replaceAll("\\s{2,}", " ");
-
-        return lnNorm.startsWith("e-Statement")
-                || lnNorm.startsWith("Plaza Mandiri")
-                || lnNorm.startsWith("Nama/Name")
-                || lnNorm.startsWith("Cabang/Branch")
-                || lnNorm.startsWith("Nomor Rekening")
-                || lnNorm.matches("^\\d{1,3}$") // Tangkap nomor halaman mandiri yang tercecer (contoh: "2")
-                || lnNorm.startsWith("Mata Uang")
-                || lnNorm.startsWith("Saldo Awal")
-                || lnNorm.startsWith("Dana Masuk")
-                || lnNorm.startsWith("Dana Keluar")
-                || lnNorm.startsWith("Saldo Akhir")
-                || lnNorm.startsWith("Saldo (IDR)")
-                || lnNorm.startsWith("Balance (IDR)")
-                || lnNorm.startsWith("Tabungan Bisnis")
-                || lnNorm.startsWith("Tabungan Rupiah")
-                || lnNorm.startsWith("No Tanggal Keterangan")
-                || lnNorm.startsWith("No Date Remarks")
-                || lnNorm.startsWith("PT Bank Mandiri")
-                || lnNorm.startsWith("Mandiri Call")
-                || lnNorm.startsWith("serta merupakan")
-                || lnNorm.startsWith("Disclaimer")
-                || lnNorm.startsWith("Issued on")
-                || lnNorm.startsWith("Dicetak pada")
-                || lnNorm.startsWith("Periode/Period")
-                || lnNorm.contains("ini adalah batas akhir")
-                || lnNorm.contains("e-Statement ini")
-                || lnNorm.contains("Segala bentuk")
-                || lnNorm.contains("Nasabah dapat")
-                || lnNorm.contains("Nasabah tunduk")
-                || lnNorm.contains("Mandiri (Persero)")
-                || lnNorm.contains("berizin dan diawasi")
-                || lnNorm.contains("Electronic document generated")
-                || lnNorm.contains("Dokumen ini dihasilkan secara")
-                || lnNorm.contains("valid without signature")
-                || lnNorm.contains("pejabat Bank Mandri")
-                || lnNorm.contains("Nasabah sepenuhnya")
-                || lnNorm.contains("from Bank Mandiri")
-                || lnNorm.contains("role responsibility")
-                || lnNorm.contains("dokumen elektronik")
-                || lnNorm.matches("\\d+\\s+dari\\s+\\d+")
-                || lnNorm.matches("\\d+\\s+of\\s+\\d+")
-                || lnNorm.matches("Page\\s+\\d+.*");
-    }
-
-    // ===================================================================
-    // HASH GENERATION
-    // ===================================================================
-
-    private String generateHash(String rawString) {
+    /** Parse Indonesian-format amount (dot = thousands, comma = decimal). */
+    private BigDecimal parseIndonesianAmount(String s) {
+        if (s == null || s.isBlank()) return BigDecimal.ZERO;
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] encodedhash = digest.digest(rawString.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder(2 * encodedhash.length);
-            for (byte b : encodedhash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            return new BigDecimal(s.replace(".", "").replace(",", ".").trim())
+                    .setScale(4, RoundingMode.HALF_UP);
+        } catch (NumberFormatException e) {
+            log.warn("Gagal parse nominal Mandiri: {}", s);
+            return BigDecimal.ZERO;
+        }
+    }
+
+    /** Generate MD5 hash (consistent with BCA, BRI, UOB, Kopra parsers). */
+    private String generateMd5Hash(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not found", e);
+            throw new RuntimeException(e);
         }
     }
 }

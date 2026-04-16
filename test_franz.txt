@@ -1,0 +1,170 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.example:mutexa-be >------------------------
+[INFO] Building mutexa-be 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mutexa-be ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mutexa-be ---
+[INFO] skip non existing resourceDirectory C:\Users\agung\Documents\PDP_BCA_Finance\MutexaApp\mutexa-be\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ mutexa-be ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 9 source files with javac [debug parameters release 21] to target\test-classes
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mutexa-be ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.mutexa_be.MandiriPdfParserFranzTest
+mvn : Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases 
+of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: 
+https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+At line:1 char:1
++ mvn test -pl . -Dtest=MandiriPdfParserFranzTest -DfailIfNoTests=false ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Mockito is curr...ockito.html#0.3:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING: A Java agent has been loaded dynamically 
+(C:\Users\agung\.m2\repository\net\bytebuddy\byte-buddy-agent\1.17.8\byte-buddy-agent-1.17.8.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has 
+been appended
+11:31:39.582 [main] WARN com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService -- Gagal parse tanggal Mandiri: 12 Jan 202 -> fallback to now. Error: Text '12 Jan 202' could not be parsed at index 7
+11:31:39.593 [main] WARN com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService -- Gagal parse tanggal Mandiri: 12 Jan 202 -> fallback to now. Error: Text '12 Jan 202' could not be parsed at index 7
+11:31:39.597 [main] WARN com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService -- Gagal parse tanggal Mandiri: 12 Jan 202 -> fallback to now. Error: Text '12 Jan 202' could not be parsed at index 7
+11:31:39.722 [main] WARN com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService -- Tanggal transaksi Mandiri tidak ditemukan, fallback ke hari ini.
+11:31:39.728 [main] INFO com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService -- Berhasil mem-parsing PDF Mandiri. Ditemukan 102 buah transaksi.
+========== MANDIRI PARSER (FRANZ HERMANN) ==========
+Total transaksi: 102
+
+TX   1 | 2026-01-01 | DB |       6500.0000 |      84069133.9200 | Biaya transfer ke Bank lain
+TX   2 | 2026-01-01 | DB |   10000000.0000 |      74069133.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX   3 | 2026-01-02 | DB |     200000.0000 |      73869133.9200 | Top-up e-money 6032982856423247
+TX   4 | 2026-01-02 | DB |       6500.0000 |      73862633.9200 | Biaya transfer ke Bank lain
+TX   5 | 2026-01-02 | DB |    5000000.0000 |      68862633.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX   6 | 2026-01-05 | DB |     200000.0000 |      68662633.9200 | Top-up e-money 6032982856423247 Top-up e-money
+TX   7 | 2026-01-05 | DB |     300000.0000 |      68362633.9200 | 6032982856423247
+TX   8 | 2026-01-05 | DB |     200000.0000 |      68162633.9200 | Top-up e-money 6032982856423247
+TX   9 | 2026-01-06 | DB |       6500.0000 |      68156133.9200 | Biaya transfer ke Bank lain
+TX  10 | 2026-01-06 | DB |   10000000.0000 |      58156133.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360 Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia
+TX  11 | 2026-01-06 | DB |     500000.0000 |      57656133.9200 | Transfer ke BANK MANDIRI DIVA RATNA SHABRINA 1560014166302
+TX  12 | 2026-01-12 | CR |   50000000.0000 |     107656133.9200 | Transfer dari Bank lain BCA MOHAMMAD NATSIR
+TX  13 | 2026-04-16 | CR |   50000000.0000 |     157656133.9200 | Transfer dari Bank lain BCA MOHAMMAD NATSIR
+TX  14 | 2026-04-16 | CR |   50000000.0000 |     207656133.9200 | Transfer dari Bank lain BCA MOHAMMAD NATSIR
+TX  15 | 2026-01-12 | CR |   50000000.0000 |     257656133.9200 | Transfer dari Bank lain BCA MOHAMMAD NATSIR
+TX  16 | 2026-04-16 | CR |   50000000.0000 |     307656133.9200 | Transfer dari Bank lain BCA MOHAMMAD NATSIR
+TX  17 | 2026-01-12 | CR |   50000000.0000 |     357656133.9200 | Transfer dari Bank lain BCA MOHAMMAD NATSIR Top-up e-money
+TX  18 | 2026-01-13 | DB |     200000.0000 |     357456133.9200 | 6032982856423247
+TX  19 | 2026-01-13 | DB |  100000000.0000 |     257456133.9200 | Transfer ke BANK MANDIRI NALIP 1560026130148
+TX  20 | 2026-01-13 | DB |       6500.0000 |     257449633.9200 | Biaya transfer ke Bank lain
+TX  21 | 2026-01-13 | DB |   10000000.0000 |     247449633.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 1662200454
+TX  22 | 2026-01-13 | DB |  200000000.0000 |      47449633.9200 | Pembukaan deposito Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia Top-up e-money
+TX  23 | 2026-01-15 | DB |     200000.0000 |      47249633.9200 | 6032982856423247
+TX  24 | 2026-01-16 | DB |    2850000.0000 |      44399633.9200 | Transaksi di EDC RAJAWALI MOTOR-HO BEKASI ID 62 Transaksi di EDC
+TX  25 | 2026-01-17 | DB |     215100.0000 |      44184533.9200 | MACARONI PANGGANG BOGOR ID 62 Transaksi di EDC
+TX  26 | 2026-01-17 | DB |     260700.0000 |      43923833.9200 | MACARONI PANGGANG BOGOR ID 62
+TX  27 | 2026-01-18 | DB |       6500.0000 |      43917333.9200 | Biaya transfer ke Bank lain
+TX  28 | 2026-01-18 | DB |    3900000.0000 |      40017333.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  29 | 2026-01-20 | DB |     200000.0000 |      39817333.9200 | Top-up e-money 6032982856423247 Biaya transaksi bank
+TX  30 | 2026-01-20 | DB |       3000.0000 |      39814333.9200 | Pembayaran Telkom/Indihome 122848244872
+TX  31 | 2026-01-20 | DB |     388500.0000 |      39425833.9200 | Pembayaran Telkom/Indihome 122848244872
+TX  32 | 2026-01-20 | DB |       6500.0000 |      39419333.9200 | Biaya transfer ke Bank lain
+TX  33 | 2026-01-20 | DB |    5000000.0000 |      34419333.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  34 | 2026-01-23 | CR |   57364354.0000 |      91783687.9200 | Transfer dari CITIBANK NA PT. GRID SOLUTIONS INDONESIA PP0000020630637 Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia
+TX  35 | 2026-01-23 | DB |   40000000.0000 |      51783687.9200 | Pembukaan deposito
+TX  36 | 2026-01-25 | DB |       6500.0000 |      51777187.9200 | Biaya transfer ke Bank lain
+TX  37 | 2026-01-25 | DB |    5000000.0000 |      46777187.9200 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  38 | 2026-01-25 | DB |     200000.0000 |      46577187.9200 | Top-up e-money 6032982856423247
+TX  39 | 2026-01-26 | CR |     993698.6300 |      47570886.5500 | Pencairan bunga deposito Dari 1270205783945
+TX  40 | 2026-01-26 | CR |     215000.0000 |      47785886.5500 | Transfer dari BANK MANDIRI DIMAS TRIBUDI WIRIAA 1270014162760 mie ayam dimas
+TX  41 | 2026-01-26 | DB |       6000.0000 |      47779886.5500 | Biaya administrasi kartu debit
+TX  42 | 2026-01-27 | DB |   15000000.0000 |      32779886.5500 | Transfer ke BANK MANDIRI RESTU UTAMI WIDYASTU 9000024908544 Top-up e-money
+TX  43 | 2026-01-28 | DB |     200000.0000 |      32579886.5500 | 6032982856423247
+TX  44 | 2026-01-31 | CR |   49826056.1600 |      82405942.7100 | Pencairan deposito 1660201338035
+TX  45 | 2026-01-31 | DB |      12500.0000 |      82393442.7100 | Biaya administrasi rekening
+TX  46 | 2026-01-31 | DB |        339.2800 |      82393103.4300 | Pajak rekening Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia
+TX  47 | 2026-01-31 | CR |       1696.4000 |      82394799.8300 | Bunga rekening Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia Tabungan Mandiri
+TX  48 | 2026-02-01 | DB |   74000000.0000 |       8394799.8300 | Transfer ke BANK MANDIRI DEDEN KURNIAWAN 1240009844854
+TX  49 | 2026-02-02 | DB |       6500.0000 |       8388299.8300 | Biaya transfer ke Bank lain
+TX  50 | 2026-02-02 | DB |    2200000.0000 |       6188299.8300 | Transfer ke Bank lain BCA VICTORINDO JAYA JASA 5211878887
+TX  51 | 2026-02-03 | DB |       6500.0000 |       6181799.8300 | Biaya transfer ke Bank lain
+TX  52 | 2026-02-03 | DB |    6000000.0000 |        181799.8300 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  53 | 2026-02-03 | DB |      50000.0000 |        131799.8300 | Top-up e-money 6032982856423247
+TX  54 | 2026-02-12 | CR |    9000000.0000 |       9131799.8300 | Transfer dari Bank lain BCA MOHAMMAD NATSIR
+TX  55 | 2026-02-12 | DB |     500000.0000 |       8631799.8300 | Transfer ke BANK MANDIRI LUSIA DAMAYANTI 1380005033969
+TX  56 | 2026-02-16 | DB |     200000.0000 |       8431799.8300 | Top-up e-money 6032982856423247 Top-up e-money
+TX  57 | 2026-02-19 | DB |     200000.0000 |       8231799.8300 | 6032982856423247 Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia Biaya transaksi bank
+TX  58 | 2026-02-21 | DB |       3000.0000 |       8228799.8300 | Pembayaran Telkom/Indihome 122848244872
+TX  59 | 2026-02-21 | DB |     388500.0000 |       7840299.8300 | Pembayaran Telkom/Indihome 122848244872 Top-up e-money
+TX  60 | 2026-02-24 | DB |     200000.0000 |       7640299.8300 | 6032982856423247
+TX  61 | 2026-02-25 | CR |  108095062.0000 |     115735361.8300 | Transfer dari CITIBANK NA PT. GRID SOLUTIONS INDONESIA PP0000020788519
+TX  62 | 2026-02-26 | CR |     993698.6300 |     116729060.4600 | Pencairan bunga deposito Dari 1270205783945
+TX  63 | 2026-02-26 | DB |       6500.0000 |     116722560.4600 | Biaya transfer ke Bank lain
+TX  64 | 2026-02-26 | DB |   10000000.0000 |     106722560.4600 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 1662200454
+TX  65 | 2026-02-26 | DB |       6500.0000 |     106716060.4600 | Biaya transfer ke Bank lain
+TX  66 | 2026-02-26 | DB |    5000000.0000 |     101716060.4600 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  67 | 2026-02-26 | DB |   15000000.0000 |      86716060.4600 | Transfer ke BANK MANDIRI RESTU UTAMI WIDYASTU 9000024908544
+TX  68 | 2026-02-26 | DB |   40000000.0000 |      46716060.4600 | Pembukaan deposito
+TX  69 | 2026-02-26 | DB |       6000.0000 |      46710060.4600 | Biaya administrasi kartu debit Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia
+TX  70 | 2026-02-28 | DB |      12500.0000 |      46697560.4600 | Biaya administrasi rekening
+TX  71 | 2026-02-28 | DB |         31.7100 |      46697528.7500 | Pajak rekening
+TX  72 | 2026-02-28 | CR |        158.5400 |      46697687.2900 | Bunga rekening Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia Tabungan Mandiri Top-up e-money
+TX  73 | 2026-03-02 | DB |     200000.0000 |      46497687.2900 | 6032982856423247
+TX  74 | 2026-03-02 | CR |     225000.0000 |      46722687.2900 | Transfer dari BANK MANDIRI DIMAS TRIBUDI WIRIAA 1270014162760
+TX  75 | 2026-03-03 | DB |     350000.0000 |      46372687.2900 | Transfer ke BANK MANDIRI RESTU UTAMI WIDYASTU 9000024908544
+TX  76 | 2026-03-08 | DB |       6500.0000 |      46366187.2900 | Biaya transfer ke Bank lain
+TX  77 | 2026-03-08 | DB |   13250000.0000 |      33116187.2900 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  78 | 2026-03-08 | DB |       6500.0000 |      33109687.2900 | Biaya transfer ke Bank lain
+TX  79 | 2026-03-08 | DB |    1700000.0000 |      31409687.2900 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360
+TX  80 | 2026-03-10 | DB |     200000.0000 |      31209687.2900 | Top-up e-money 6032982856423247 Transaksi di EDC
+TX  81 | 2026-03-15 | DB |     500000.0000 |      30709687.2900 | 023 - VIVO MARGA JAYA Bekasi (Kota)ID
+TX  82 | 2026-03-16 | DB |     200000.0000 |      30509687.2900 | Top-up e-money 6032982856423247 Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia Transaksi di EDC
+TX  83 | 2026-03-17 | DB |     910000.0000 |      29599687.2900 | RAJAWALI MOTOR-HO BEKASI ID 62
+TX  84 | 2026-03-18 | DB |       6500.0000 |      29593187.2900 | Biaya transfer ke Bank lain
+TX  85 | 2026-03-18 | DB |    5000000.0000 |      24593187.2900 | Transfer ke Bank lain BCA MOHAMMAD NATSIR 7145127360 Top-up e-money
+TX  86 | 2026-03-18 | DB |     500000.0000 |      24093187.2900 | 6032982856423247
+TX  87 | 2026-03-18 | DB |     550000.0000 |      23543187.2900 | Transfer ke BANK MANDIRI LUSIA DAMAYANTI 1380005033969 Transaksi di EDC
+TX  88 | 2026-03-22 | DB |     410000.0000 |      23133187.2900 | SPBU 44.57713 - POT Karanganyar (ID
+TX  89 | 2026-03-23 | DB |     167500.0000 |      22965687.2900 | Pembayaran QR ke PENDHOPO NGOPI 603235851325
+TX  90 | 2026-03-25 | CR |   51673995.0000 |      74639682.2900 | Transfer dari CITIBANK NA PT. GRID SOLUTIONS INDONESIA PP0000020911340 Top-up e-money
+TX  91 | 2026-03-25 | DB |      10000.0000 |      74629682.2900 | 6032982881883415
+TX  92 | 2026-03-25 | DB |   20000000.0000 |      54629682.2900 | Pembukaan deposito Pencairan bunga deposito
+TX  93 | 2026-03-26 | CR |     897534.2500 |      55527216.5400 | Dari 1270205783945 Biaya transaksi bank
+TX  94 | 2026-03-26 | DB |       3000.0000 |      55524216.5400 | Pembayaran Telkom/Indihome 122848244872 Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia
+TX  95 | 2026-03-26 | DB |     388500.0000 |      55135716.5400 | Pembayaran Telkom/Indihome 122848244872
+TX  96 | 2026-03-26 | DB |     279185.0000 |      54856531.5400 | Transaksi di EDC SPBU 44-57103 BANYUANYAR Surakarta (KoID 2026 Top-up e-money
+TX  97 | 2026-04-16 | DB |     500000.0000 |      54356531.5400 | 26 Mar 6032982856423247
+TX  98 | 2026-03-26 | DB |     334806.0000 |      54021725.5400 | Transaksi di EDC SPBU ANUGRAH RAHARJO JL TOL KANCI ID 62
+TX  99 | 2026-03-26 | DB |       6000.0000 |      54015725.5400 | Biaya administrasi kartu debit
+TX 100 | 2026-03-27 | DB |    2000000.0000 |      52015725.5400 | Transfer ke BANK MANDIRI LUSIA DAMAYANTI 1380005033969 Transaksi di EDC
+TX 101 | 2026-03-28 | DB |     312724.0000 |      51703001.5400 | 034 - VIVO PEKAYON Bekasi (Kota)ID
+TX 102 | 2026-03-30 | DB |     200000.0000 |      51503001.5400 | Top-up e-money 6032982856423247
+
+Total CR: 579286253.6100 (18 transaksi)
+Total DB: 611858885.9900 (84 transaksi)
+====================================================
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.368 s -- in com.example.mutexa_be.MandiriPdfParserFranzTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.437 s
+[INFO] Finished at: 2026-04-16T11:31:40+07:00
+[INFO] ------------------------------------------------------------------------

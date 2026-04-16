@@ -1,0 +1,97 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.example:mutexa-be >------------------------
+[INFO] Building mutexa-be 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mutexa-be ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mutexa-be ---
+[INFO] skip non existing resourceDirectory C:\Users\agung\Documents\PDP_BCA_Finance\MutexaApp\mutexa-be\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mutexa-be ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.mutexa_be.MandiriRawTextCompare
+=== BILGUS (original) === (14 pages)
+  Page 1: 50 lines
+  Page 2: 46 lines
+  Page 3: 46 lines
+=== FRANZ (masked) === (12 pages)
+  Page 1: 42 lines
+  Page 2: 44 lines
+  Page 3: 44 lines
+=== NATSIR (original) === (12 pages)
+  Page 1: 42 lines
+  Page 2: 44 lines
+  Page 3: 46 lines
+
+====== FRANZ (masked) vs NATSIR (original) - Page 2 ======
+L001 == FRANZ: e-Statement                                                                 | NATSIR: e-Statement
+L002 == FRANZ: Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia | NATSIR: Menara Mandiri 1 Jalan Jenderal Sudirman Kav. 54-55, Jakarta 12190, Indonesia
+L003 !! FRANZ: Nama/Name : MFROAHNAZM HMEARDM NAANTNSIR Periode/Period : 01 Jan 2026 - 31 Jan 2026 2 dari 5 | NATSIR: Nama/Name : MOHAMMAD NATSIR Periode/Period : 01 Jan 2026 - 31 Jan 2026 2 dari 5
+L004 == FRANZ: 2 of 5                                                                      | NATSIR: 2 of 5
+L005 !! FRANZ: Cabang/Branch : KCP  JPkOt KNaDliOmKa lIaNnDgAH Dicetak pada/Issued on : 31 Mar 2026 | NATSIR: Cabang/Branch : KCP Jkt Kalimalang Dicetak pada/Issued on : 31 Mar 2026
+L006 == FRANZ: No Tanggal Keterangan Nominal (IDR) Saldo (IDR)                             | NATSIR: No Tanggal Keterangan Nominal (IDR) Saldo (IDR)
+L007 == FRANZ: No Date Remarks Amount (IDR) Balance (IDR)                                  | NATSIR: No Date Remarks Amount (IDR) Balance (IDR)
+L008 == FRANZ: Transfer ke BANK MANDIRI                                                    | NATSIR: Transfer ke BANK MANDIRI
+L009 == FRANZ: 11 06 Jan 2026 -500.000,00 57.656.133,92                                    | NATSIR: 11 06 Jan 2026 -500.000,00 57.656.133,92
+L010 == FRANZ: 22:14:34 WIB DIVA RATNA SHABRINA 1560014166302                              | NATSIR: 22:14:34 WIB DIVA RATNA SHABRINA 1560014166302
+L011 == FRANZ: 12 Jan 2026 Transfer dari Bank lain                                         | NATSIR: 12 Jan 2026 Transfer dari Bank lain
+L012 == FRANZ: 12 +50.000.000,00 107.656.133,92                                            | NATSIR: 12 +50.000.000,00 107.656.133,92
+L013 == FRANZ: 01:13:34 WIB BCA MOHAMMAD NATSIR                                            | NATSIR: 01:13:34 WIB BCA MOHAMMAD NATSIR
+L014 == FRANZ: 6 Transfer dari Bank lain                                                   | NATSIR: 6 Transfer dari Bank lain
+L015 == FRANZ: 13 12 Jan 202 +50.000.000,00 157.656.133,92                                 | NATSIR: 13 12 Jan 202 +50.000.000,00 157.656.133,92
+L016 == FRANZ: 01:13:53 WIB BCA MOHAMMAD NATSIR                                            | NATSIR: 01:13:53 WIB BCA MOHAMMAD NATSIR
+L017 == FRANZ: 6 Transfer dari Bank lain                                                   | NATSIR: 6 Transfer dari Bank lain
+L018 == FRANZ: 14 12 Jan 202 +50.000.000,00 207.656.133,92                                 | NATSIR: 14 12 Jan 202 +50.000.000,00 207.656.133,92
+L019 == FRANZ: 01:14:07 WIB BCA MOHAMMAD NATSIR                                            | NATSIR: 01:14:07 WIB BCA MOHAMMAD NATSIR
+L020 !! FRANZ: Transfer dari Bank lain                                                     | NATSIR: 6 Transfer dari Bank lain
+L021 !! FRANZ: 15 12 Jan 2026 +50.000.000,00 257.656.133,92                                | NATSIR: 15 12 Jan 202 +50.000.000,00 257.656.133,92
+L022 == FRANZ: 18:04:27 WIB BCA MOHAMMAD NATSIR                                            | NATSIR: 18:04:27 WIB BCA MOHAMMAD NATSIR
+L023 == FRANZ: 6 Transfer dari Bank lain                                                   | NATSIR: 6 Transfer dari Bank lain
+L024 == FRANZ: 16 12 Jan 202 +50.000.000,00 307.656.133,92                                 | NATSIR: 16 12 Jan 202 +50.000.000,00 307.656.133,92
+L025 == FRANZ: 18:07:27 WIB BCA MOHAMMAD NATSIR                                            | NATSIR: 18:07:27 WIB BCA MOHAMMAD NATSIR
+L026 == FRANZ: Transfer dari Bank lain                                                     | NATSIR: Transfer dari Bank lain
+L027 == FRANZ: 17 12 Jan 2026 +50.000.000,00 357.656.133,92                                | NATSIR: 17 12 Jan 2026 +50.000.000,00 357.656.133,92
+L028 == FRANZ: 18:09:15 WIB BCA MOHAMMAD NATSIR                                            | NATSIR: 18:09:15 WIB BCA MOHAMMAD NATSIR
+L029 == FRANZ: Top-up e-money                                                              | NATSIR: Top-up e-money
+L030 == FRANZ: 18 13 Jan 2026 -200.000,00 357.456.133,92                                   | NATSIR: 18 13 Jan 2026 -200.000,00 357.456.133,92
+L031 == FRANZ: 13:47:22 WIB 6032982856423247                                               | NATSIR: 13:47:22 WIB 6032982856423247
+L032 == FRANZ: 2 Transfer ke BANK MANDIRI                                                  | NATSIR: 2 Transfer ke BANK MANDIRI
+L033 == FRANZ: 19 13 Jan 20 6 -100.000.000,00 257.456.133,92                               | NATSIR: 19 13 Jan 20 6 -100.000.000,00 257.456.133,92
+L034 == FRANZ: 14:18:27 WIB NALIP 1560026130148                                            | NATSIR: 14:18:27 WIB NALIP 1560026130148
+L035 == FRANZ: 20 13 Jan 2026 Biaya transfer ke Bank lain -6.500,00 257.449.633,92         | NATSIR: 20 13 Jan 2026 Biaya transfer ke Bank lain -6.500,00 257.449.633,92
+L036 == FRANZ: 17:51:57 WIB                                                                | NATSIR: 17:51:57 WIB
+L037 == FRANZ: Transfer ke Bank lain                                                       | NATSIR: Transfer ke Bank lain
+L038 == FRANZ: 21 13 Jan 2026 -10.000.000,00 247.449.633,92                                | NATSIR: 21 13 Jan 2026 -10.000.000,00 247.449.633,92
+L039 == FRANZ: 17:51:57 WIB BCA MOHAMMAD NATSIR 1662200454                                 | NATSIR: 17:51:57 WIB BCA MOHAMMAD NATSIR 1662200454
+L040 == FRANZ: 22 13 Jan 2026 Pembukaan deposito -200.000.000,00 47.449.633,92             | NATSIR: 22 13 Jan 2026 Pembukaan deposito -200.000.000,00 47.449.633,92
+L041 == FRANZ: 17:56:41 WIB                                                                | NATSIR: 17:56:41 WIB
+L042 == FRANZ: PT Bank Mandiri (Persero) Tbk. berizin dan diawasi oleh Otoritas Jasa Keuangan (OJK) dan Bank Indonesia (BI), | NATSIR: PT Bank Mandiri (Persero) Tbk. berizin dan diawasi oleh Otoritas Jasa Keuangan (OJK) dan Bank Indonesia (BI),
+L043 == FRANZ: Mandiri Call 14000                                                          | NATSIR: Mandiri Call 14000
+L044 == FRANZ: serta merupakan peserta penjamin Lembaga Penjamin Simpanan (LPS)            | NATSIR: serta merupakan peserta penjamin Lembaga Penjamin Simpanan (LPS)
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.218 s -- in com.example.mutexa_be.MandiriRawTextCompare
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.303 s
+[INFO] Finished at: 2026-04-16T11:51:17+07:00
+[INFO] ------------------------------------------------------------------------

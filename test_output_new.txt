@@ -1,0 +1,195 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.example:mutexa-be >------------------------
+[INFO] Building mutexa-be 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mutexa-be ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mutexa-be ---
+[INFO] skip non existing resourceDirectory C:\Users\agung\Documents\PDP_BCA_Finance\MutexaApp\mutexa-be\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ mutexa-be ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mutexa-be ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.example.mutexa_be.MandiriPdfParserServiceTest
+mvn : Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases 
+of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: 
+https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+At line:1 char:1
++ mvn test -pl . -Dtest=MandiriPdfParserServiceTest -DfailIfNoTests=fal ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Mockito is curr...ockito.html#0.3:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING: A Java agent has been loaded dynamically 
+(C:\Users\agung\.m2\repository\net\bytebuddy\byte-buddy-agent\1.17.8\byte-buddy-agent-1.17.8.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has 
+been appended
+11:07:43.418 [main] INFO com.example.mutexa_be.service.parser.mandiri.MandiriPdfParserService -- Berhasil mem-parsing PDF Mandiri. Ditemukan 132 buah transaksi.
+========== MANDIRI PARSER TEST ==========
+Total transaksi: 132
+
+TX   1 | 2025-01-03 | CR |  100000000.0000 |     115120997.1000 | Transfer dari Bank lain BRI EMHA ANANDA PERKASA 2901003208304
+TX   2 | 2025-01-04 | CR |   95000000.0000 |     210120997.1000 | Transfer dari BANK MANDIRI DESSY ARIZTIA SAVITR 1010006427981 Pelunasan DP an Dessy Lapagu
+TX   3 | 2025-01-06 | CR |   62500000.0000 |     272620997.1000 | Transfer BI Fast Dari BANK BNI SUTRISNO 799999205
+TX   4 | 2025-01-07 | CR |   10000000.0000 |     282620997.1000 | Transfer dari BANK MANDIRI SITI AWALIYAH SOLEHA 1170004921250 booking fee mobil CRV
+TX   5 | 2025-01-07 | DB |       2500.0000 |     282618497.1000 | Biaya transfer BI Fast
+TX   6 | 2025-01-07 | DB |  250000000.0000 |      32618497.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX   7 | 2025-01-08 | DB |       2500.0000 |      32615997.1000 | Biaya transfer BI Fast
+TX   8 | 2025-01-08 | DB |   32500000.0000 |        115997.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX   9 | 2025-01-14 | CR |    8000000.0000 |       8115997.1000 | Transfer dari BANK MANDIRI TOMY HERLAMBANG 1370017839917
+TX  10 | 2025-01-14 | CR |   10700000.0000 |      18815997.1000 | Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419
+TX  11 | 2025-01-14 | DB |   18580623.0000 |        235374.1000 | Pembayaran kartu kredit 4149313001641522
+TX  12 | 2025-01-17 | CR |   10000000.0000 |      10235374.1000 | Transfer dari BANK MANDIRI YUAN INDRAKI 1200013928994
+TX  13 | 2025-01-17 | CR |   20000000.0000 |      30235374.1000 | Transfer dari BANK MANDIRI NOVEL FAJAR RISTAWAN 1220006006616
+TX  14 | 2025-01-18 | DB |      20000.0000 |      30215374.1000 | Transfer ke BANK MANDIRI CENTREPARK CITRA COR 1170007231145
+TX  15 | 2025-01-18 | DB |     880000.0000 |      29335374.1000 | Transfer ke BANK MANDIRI SINAR GEMILANG TUMBU 1190011075957 4 x sesi zedd mistison
+TX  16 | 2025-01-20 | DB |       2500.0000 |      29332874.1000 | Biaya transfer BI Fast
+TX  17 | 2025-01-20 | DB |   29200000.0000 |        132874.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  18 | 2025-01-20 | CR |  299000000.0000 |     299132874.1000 | Transfer dari BANK MANDIRI YUAN INDRAKI 1200013928994
+TX  19 | 2025-01-20 | CR |  223000000.0000 |     522132874.1000 | Transfer dari BANK MANDIRI MUHAMMAD GILANG GIFA 1820001176544
+TX  20 | 2025-01-20 | DB |       2500.0000 |     522130374.1000 | Biaya transfer BI Fast
+TX  21 | 2025-01-20 | DB |  220000000.0000 |     302130374.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  22 | 2025-01-21 | DB |       2500.0000 |     302127874.1000 | Biaya transfer BI Fast
+TX  23 | 2025-01-21 | DB |  250000000.0000 |      52127874.1000 | Transfer BI Fast Ke BRI Nanda Rivai 1163402420012502 Alphard G 2021 hitam B 1662 Y
+TX  24 | 2025-01-21 | DB |       6500.0000 |      52121374.1000 | Biaya transfer ke Bank lain
+TX  25 | 2025-01-21 | DB |   50000000.0000 |       2121374.1000 | Transfer ke Bank lain BCA BILGUS MISTISON 3991289419
+TX  26 | 2025-01-23 | CR |   70000000.0000 |      72121374.1000 | Transfer dari BANK MANDIRI RIVAN PANGESA 1200010368749
+TX  27 | 2025-01-23 | DB |       2500.0000 |      72118874.1000 | Biaya transfer BI Fast
+TX  28 | 2025-01-23 | DB |   70000000.0000 |       2118874.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 3991289419
+TX  29 | 2025-01-24 | CR |  300000000.0000 |     302118874.1000 | Transfer dari BANK MANDIRI ADE ZAENAB 1570005463246 pembayaran VRZ 2022 putih
+TX  30 | 2025-01-24 | CR |   20000000.0000 |     322118874.1000 | Transfer dari BANK MANDIRI MOYA ASYARAH 1230006388211
+TX  31 | 2025-01-24 | DB |       2500.0000 |     322116374.1000 | Biaya transfer BI Fast
+TX  32 | 2025-01-24 | DB |  250000000.0000 |      72116374.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  33 | 2025-01-24 | DB |       8500.0000 |      72107874.1000 | Biaya administrasi kartu debit
+TX  34 | 2025-01-25 | DB |       2500.0000 |      72105374.1000 | Biaya transfer BI Fast
+TX  35 | 2025-01-25 | DB |    2000000.0000 |      70105374.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  36 | 2025-01-25 | DB |   70000000.0000 |        105374.1000 | Transfer ke BANK MANDIRI RIVAN PANGESA 1200010368749
+TX  37 | 2025-01-25 | CR |  180000000.0000 |     180105374.1000 | Transfer antar Mandiri DARI MERPATI ABADI SEJAHTERA Transfer Fee 202501251555607791
+TX  38 | 2025-01-26 | DB |       2500.0000 |     180102874.1000 | Biaya transfer BI Fast
+TX  39 | 2025-01-26 | DB |  180000000.0000 |        102874.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  40 | 2025-01-29 | CR |    5000000.0000 |       5102874.1000 | Transfer dari BANK MANDIRI SYAFIRA AYUNING PANG 1330018389908
+TX  41 | 2025-01-29 | CR |  130000000.0000 |     135102874.1000 | Transfer dari BANK MANDIRI RIO KHAIRUL IKHWAN 1670004494216 Brio Hitam
+TX  42 | 2025-01-30 | DB |       2500.0000 |     135100374.1000 | Biaya transfer BI Fast
+TX  43 | 2025-01-30 | DB |  135000000.0000 |        100374.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  44 | 2025-01-30 | CR |   20000000.0000 |      20100374.1000 | Transfer antar Mandiri DARI MERPATI ABADI SEJAHTERA Transfer Fee 202501301315707842
+TX  45 | 2025-01-30 | DB |       2500.0000 |      20097874.1000 | Biaya transfer BI Fast
+TX  46 | 2025-01-30 | DB |   20000000.0000 |         97874.1000 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  47 | 2025-01-31 | DB |      12500.0000 |         85374.1000 | Biaya administrasi rekening
+TX  48 | 2025-01-31 | DB |       5269.6400 |         80104.4600 | Pajak rekening
+TX  49 | 2025-01-31 | DB |      25000.0000 |         55104.4600 | Biaya saldo minimum
+TX  50 | 2025-01-31 | CR |      26348.2100 |         81452.6700 | Bunga rekening
+TX  51 | 2025-02-03 | CR |  275498000.0000 |     275579452.6700 | Transfer dari BANK MANDIRI RIZTANTI EVITA 1640000750598
+TX  52 | 2025-02-03 | DB |  275000000.0000 |        579452.6700 | Transfer ke BANK MANDIRI RACHMAN ARIF SUSANTO 1560013226081
+TX  53 | 2025-02-04 | CR |   85800000.0000 |      86379452.6700 | Transfer dari BANK MANDIRI SYAFIRA AYUNING PANG 1330018389908
+TX  54 | 2025-02-04 | DB |       2500.0000 |      86376952.6700 | Biaya transfer BI Fast
+TX  55 | 2025-02-04 | DB |   86200000.0000 |        176952.6700 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  56 | 2025-02-09 | CR |  100000000.0000 |     100176952.6700 | Transfer dari BANK MANDIRI SOVIAN ANDI PUTRA 1670003705810
+TX  57 | 2025-02-09 | CR |   20000000.0000 |     120176952.6700 | Transfer dari BANK MANDIRI MOYA ASYARAH 1230006388211
+TX  58 | 2025-02-09 | DB |       2500.0000 |     120174452.6700 | Biaya transfer BI Fast
+TX  59 | 2025-02-09 | DB |  120000000.0000 |        174452.6700 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  60 | 2025-02-11 | CR |   58000000.0000 |      58174452.6700 | Transfer dari BANK MANDIRI ERRY PRIYAMBODO 1560003757285
+TX  61 | 2025-02-12 | CR |   10000000.0000 |      68174452.6700 | Transfer BI Fast Dari BRI MUNAWAR AZRAFI 065201021034500
+TX  62 | 2025-02-12 | CR |  250000000.0000 |     318174452.6700 | Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419
+TX  63 | 2025-02-12 | CR |   25000000.0000 |     343174452.6700 | Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419
+TX  64 | 2025-02-12 | DB |  342527000.0000 |        647452.6700 | Pembayaran BFI Finance Indonesia Tbk, PT 8853754692407706
+TX  65 | 2025-02-14 | CR |   20000000.0000 |      20647452.6700 | Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419
+TX  66 | 2025-02-14 | DB |   20493368.0000 |        154084.6700 | Pembayaran kartu kredit 4149313001641522
+TX  67 | 2025-02-16 | CR |   14000000.0000 |      14154084.6700 | Transfer BI Fast Dari BANK BNI ZAINAL ABIDIN 0843618382 Mataram
+TX  68 | 2025-02-16 | DB |       2500.0000 |      14151584.6700 | Biaya transfer BI Fast
+TX  69 | 2025-02-16 | DB |   14000000.0000 |        151584.6700 | Transfer BI Fast Ke BCA MIMI SOEJONO 5000591833
+TX  70 | 2025-02-21 | CR |    1000000.0000 |       1151584.6700 | Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419
+TX  71 | 2025-02-21 | DB |    1001500.0000 |        150084.6700 | Pembayaran Xendit 88908 889081866353115
+TX  72 | 2025-02-22 | CR |    3000000.0000 |       3150084.6700 | Transfer dari BANK MANDIRI HENDRI SUSANTO 700010775091
+TX  73 | 2025-02-23 | DB |      20000.0000 |       3130084.6700 | Biaya penggantian kartu ATM Bank Mandiri KCP Jakarta ITC Mangga Dua
+TX  74 | 2025-02-23 | DB |     650000.0000 |       2480084.6700 | Pembayaran Finnet Indonesia, PT 880442000176481
+TX  75 | 2025-02-26 | CR |    1000000.0000 |       3480084.6700 | Transfer dari BANK MANDIRI JOKO MULYANTO 1290010510036
+TX  76 | 2025-02-27 | CR |   70000000.0000 |      73480084.6700 | Transfer BI Fast Dari BANK BNI ZAINAL ABIDIN 0843618382
+TX  77 | 2025-02-28 | DB |       2500.0000 |      73477584.6700 | Biaya transfer BI Fast
+TX  78 | 2025-02-28 | DB |   70000000.0000 |       3477584.6700 | Transfer BI Fast Ke BCA MIMI SOEJONO 5000591833
+TX  79 | 2025-02-28 | CR |  100000000.0000 |     103477584.6700 | Transfer dari BANK MANDIRI ANDRY ARDIANSYAH 1230006381836
+TX  80 | 2025-02-28 | DB |       2500.0000 |     103475084.6700 | Biaya transfer BI Fast
+TX  81 | 2025-02-28 | DB |  103300000.0000 |        175084.6700 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  82 | 2025-02-28 | DB |      12500.0000 |        162584.6700 | Biaya administrasi rekening
+TX  83 | 2025-02-28 | DB |      25000.0000 |        137584.6700 | Biaya saldo minimum
+TX  84 | 2025-02-28 | CR |       2318.3800 |        139903.0500 | Bunga rekening
+TX  85 | 2025-03-01 | CR |    4000000.0000 |       4139903.0500 | Transfer dari BANK MANDIRI JOKO MULYANTO 1290010510036
+TX  86 | 2025-03-01 | CR |  145000000.0000 |     149139903.0500 | Transfer dari BANK MANDIRI DWI PUDJI IRAWATI 1170004149563
+TX  87 | 2025-03-02 | DB |       2500.0000 |     149137403.0500 | Biaya transfer BI Fast
+TX  88 | 2025-03-02 | DB |  149000000.0000 |        137403.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  89 | 2025-03-02 | CR |  145000000.0000 |     145137403.0500 | Transfer dari BANK MANDIRI DWI PUDJI IRAWATI 1170004149563 pelunasan mobil hyundai creta
+TX  90 | 2025-03-02 | DB |       2500.0000 |     145134903.0500 | Biaya transfer BI Fast
+TX  91 | 2025-03-02 | DB |  145000000.0000 |        134903.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  92 | 2025-03-04 | CR |    5000000.0000 |       5134903.0500 | Transfer dari BANK MANDIRI BENNY BONGKRIWAN 1410005134457 B 2434 KIF
+TX  93 | 2025-03-04 | CR |   10000000.0000 |      15134903.0500 | Transfer dari BANK MANDIRI IMAM SAMSIDI 1010001039013
+TX  94 | 2025-03-05 | CR |    1500000.0000 |      16634903.0500 | Transfer dari BANK MANDIRI SUPRIYONO 1200013041012
+TX  95 | 2025-03-05 | CR |   63500000.0000 |      80134903.0500 | Transfer dari BANK MANDIRI IMAM SAMSIDI 1010001039013
+TX  96 | 2025-03-05 | DB |       2500.0000 |      80132403.0500 | Biaya transfer BI Fast
+TX  97 | 2025-03-05 | DB |   80000000.0000 |        132403.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX  98 | 2025-03-08 | CR |   45000000.0000 |      45132403.0500 | Transfer dari BANK MANDIRI JOKO MULYANTO 1290010510036
+TX  99 | 2025-03-08 | CR |  155000000.0000 |     200132403.0500 | Transfer dari BANK MANDIRI SUMARMI 1560009922891
+TX 100 | 2025-03-08 | DB |  200000000.0000 |        132403.0500 | Transfer ke BANK MANDIRI SRI REJEKI 1550010522749 Innova G diesel 2022 A 1796 EG
+TX 101 | 2025-03-09 | CR |   10000000.0000 |      10132403.0500 | Transfer dari BANK MANDIRI AGUS SUKINDAR 1290011703390
+TX 102 | 2025-03-12 | CR |    7000000.0000 |      17132403.0500 | Transfer dari BANK MANDIRI IRFAN BUDIANTO 1320014468434 outlander
+TX 103 | 2025-03-13 | DB |       2500.0000 |      17129903.0500 | Biaya transfer BI Fast
+TX 104 | 2025-03-13 | DB |   17000000.0000 |        129903.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 3991289419
+TX 105 | 2025-03-14 | CR |    5000000.0000 |       5129903.0500 | Transfer dari BANK MANDIRI PROBIAN TAFTAYANI 1240005580817 Tanda jadi cx5 b2434kif
+TX 106 | 2025-03-17 | CR |   15000000.0000 |      20129903.0500 | Transfer BI Fast Dari BCA BILGUS MISTISON 3991289419
+TX 107 | 2025-03-17 | DB |   19710689.0000 |        419214.0500 | Pembayaran kartu kredit 4149313001641522
+TX 108 | 2025-03-17 | CR |    4000000.0000 |       4419214.0500 | Transfer dari BANK MANDIRI ARIS PRIYANTO 1200009820551
+TX 109 | 2025-03-18 | DB |     500000.0000 |       3919214.0500 | Transfer ke BANK MANDIRI GO TJOEN SIANG 1200010697980
+TX 110 | 2025-03-18 | DB |       2500.0000 |       3916714.0500 | Biaya transfer BI Fast
+TX 111 | 2025-03-18 | DB |    3800000.0000 |        116714.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX 112 | 2025-03-20 | CR |    1000000.0000 |       1116714.0500 | Transfer dari BANK MANDIRI AHMAD RIFAI 9000021999249 booking mobil secend
+TX 113 | 2025-03-22 | CR |   10000000.0000 |      11116714.0500 | Transfer dari BANK MANDIRI ANTONYUS CUCUNG HEND 1650002865302
+TX 114 | 2025-03-22 | CR |    5000000.0000 |      16116714.0500 | Transfer dari BANK MANDIRI ADIL JATMIKO 1660001541010
+TX 115 | 2025-03-23 | DB |    5000000.0000 |      11116714.0500 | Transfer ke BANK MANDIRI RONALD FERRY SILAEN 60005199678 Dp Vrz trd 2018 putih B 1586 PJN
+TX 116 | 2025-03-23 | DB |       8500.0000 |      11108214.0500 | Biaya administrasi kartu debit
+TX 117 | 2025-03-24 | CR |   10000000.0000 |      21108214.0500 | Transfer dari BANK MANDIRI TONY NURDIANSYAH 1080007653240 Pelunasan Palisade an Tony
+TX 118 | 2025-03-24 | DB |       2500.0000 |      21105714.0500 | Biaya transfer BI Fast
+TX 119 | 2025-03-24 | DB |   21000000.0000 |        105714.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX 120 | 2025-03-25 | CR |   15000000.0000 |      15105714.0500 | Transfer dari BANK MANDIRI ADIL JATMIKO 1200004917378
+TX 121 | 2025-03-25 | DB |    5000000.0000 |      10105714.0500 | Transfer ke BANK MANDIRI PROBIAN TAFTAYANI 1240005580817 Refund dp Cx5
+TX 122 | 2025-03-26 | DB |       2500.0000 |      10103214.0500 | Biaya transfer BI Fast
+TX 123 | 2025-03-26 | DB |   10000000.0000 |        103214.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX 124 | 2025-03-27 | CR |  290000000.0000 |     290103214.0500 | Transfer dari BANK MANDIRI ANTONYUS CUCUNG HEND 1650002865302
+TX 125 | 2025-03-27 | DB |       2500.0000 |     290100714.0500 | Biaya transfer BI Fast
+TX 126 | 2025-03-27 | DB |  250000000.0000 |      40100714.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX 127 | 2025-03-28 | DB |       2500.0000 |      40098214.0500 | Biaya transfer BI Fast
+TX 128 | 2025-03-28 | DB |   40000000.0000 |         98214.0500 | Transfer BI Fast Ke BCA BILGUS MISTISON 33331808
+TX 129 | 2025-03-31 | DB |      12500.0000 |         85714.0500 | Biaya administrasi rekening
+TX 130 | 2025-03-31 | DB |        333.2200 |         85380.8300 | Pajak rekening
+TX 131 | 2025-03-31 | DB |      25000.0000 |         60380.8300 | Biaya saldo minimum
+TX 132 | 2025-03-31 | CR |       1666.1100 |         62046.9400 | Bunga rekening
+
+Total CR: 3542528332.7000 (55 transaksi)
+Total DB: 3557587282.8600 (77 transaksi)
+==========================================
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.947 s -- in com.example.mutexa_be.MandiriPdfParserServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  9.255 s
+[INFO] Finished at: 2026-04-16T11:07:43+07:00
+[INFO] ------------------------------------------------------------------------
