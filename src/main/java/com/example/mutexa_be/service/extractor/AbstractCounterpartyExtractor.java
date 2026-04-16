@@ -34,7 +34,7 @@ public abstract class AbstractCounterpartyExtractor implements CounterpartyExtra
       Matcher mCena = Pattern.compile("CENAIDJA/([A-Z][A-Z0-9 ]+?)(?:\\s+PT)?\\s+\\d").matcher(text);
       if (mCena.find()) return mCena.group(1).trim();
 
-      Matcher mDari = Pattern.compile("(?:DARI|KEPADA|KE)\\s+([A-Z][A-Z0-9 ]{2,}?)(?:\\s+TRANSFER|\\s+\\d{10,}|$)").matcher(text);
+      Matcher mDari = Pattern.compile("(?:DARI|KEPADA|KE)\\s+([A-Z][A-Z0-9 ]{2,}?)(?:\\s+TRANSFER|\\s+\\d{5,}|$)").matcher(text);
       if (mDari.find() && mDari.group(1).trim().length() > 3) return mDari.group(1).trim();
 
       Matcher mCorp = Pattern.compile("((?:PT|CV)\\.?)\\s+([A-Z][A-Z0-9 ]{2,}?)(?:\\s+\\d|$)").matcher(text);
@@ -55,8 +55,8 @@ public abstract class AbstractCounterpartyExtractor implements CounterpartyExtra
          "BUNGA", "PAJAK BUNGA", "CENAIDJA", "WSID", "SALES", "TUNAI",
          "DEBIT", "CREDIT", "DB", "CR", "INTEREST", "FTSCY", "FTS", "WS",
          "CHG", "TRFK", "ADJ", "MUTASI", "REK", "REKENING", "SALDO", "TRANSFER",
-         "VIA", "BRIMO", "IBBIZ", "IBIZ", "NBMB", "BRIVA", "PEMBAYARAN",
-         "PEMBELIAN", "TOKEN", "PLN", "PULSA", "FAST"
+         "VIA", "BRIMO", "IBBIZ", "IBIZ", "NBMB", "BRIVA", "PEMBAYARAN", "PAYMENT",
+         "PEMBELIAN", "TOKEN", "PLN", "PULSA", "FAST", "ON"
       };
 
       for (String sw : stopwords) {
