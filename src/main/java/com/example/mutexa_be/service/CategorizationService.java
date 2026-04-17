@@ -63,19 +63,7 @@ public class CategorizationService {
                "tambahan bunga", "pendapatan bunga", "interest income")) {
             categorizedAs = TransactionCategory.INTEREST;
          }
-         // Kategori: INCOME (Pendapatan/Omzet Bisnis/Gaji)
-         // Terbatas pada kata yang PASTI merupakan penerimaan/pendapatan (arus kas masuk
-         // riil)
-         else if (matchesKeyword(textToSearch,
-               "gaji", "salary", "payroll", "pyrl", "honor", "honorarium",
-               "thr", "dividen", "dividend", "insentif", "incentive",
-               "tunjangan", "remunerasi", "pensiun", "upah", "uang saku",
-               "komisi", "commission", "sales", "penjualan", "pendapatan",
-               "revenue", "omset", "omzet", "penerimaan", "proyek", "subsidi",
-               "modal", "setor", "setoran", "incoming", "kredit masuk",
-               "setoran tunai", "settlement merchant", "pencairan dana")) {
-            categorizedAs = TransactionCategory.INCOME;
-         }
+
          // Kategori: TRANSFER (Metode Pembayaran, Kanal Transaksi, Perpindahan Dana
          // Umum)
          // Memisahkan transaksi general seperti QRIS, EDC, Pelunasan yang bisa jadi

@@ -25,16 +25,7 @@ public class BniPdfParserServiceTest {
 
     @BeforeEach
     void setUp() {
-        TransactionRefinementService transactionRefinementService = Mockito.mock(TransactionRefinementService.class);
-
-        // Mock normalisasi
-        Mockito.when(transactionRefinementService.normalizeDescription(any(String.class)))
-                .thenAnswer(invocation -> {
-                    String desc = invocation.getArgument(0);
-                    return desc; // Biarkan mentah untuk tes agar gampang divalidasi
-                });
-
-        bniPdfParserService = new BniPdfParserService(transactionRefinementService);
+        bniPdfParserService = new BniPdfParserService();
         mockDocument = new MutationDocument();
     }
 
@@ -47,7 +38,7 @@ public class BniPdfParserServiceTest {
             return;
         }
 
-        List<BankTransaction> transactions = bniPdfParserService.parse(mockDocument, filePath);
+        List<BankTransaction> transactions = bniPdfParserService.parsePdf(filePath, mockDocument, "dev1");
 
         // Print all transactions for manual review during test logic building
         int txNo = 1;
@@ -83,6 +74,7 @@ public class BniPdfParserServiceTest {
         assertEquals(MutationType.DB, tx2.getMutationType());
         assertEquals(0, new BigDecimal("2500").compareTo(tx2.getAmount()));
         assertEquals(0, new BigDecimal("3505492").compareTo(tx2.getBalance()));
-        assertTrue(tx2.getRawDescription().contains("959065 BY TRX BIFAST"));
+        assertTrue(tx2.getRawDescription().contains("BY TRX BIFAST"));
+        assertFalse(tx2.getRawDescription().contains("959065"), "Journal No seharusnya di-strip");
     }
 }
