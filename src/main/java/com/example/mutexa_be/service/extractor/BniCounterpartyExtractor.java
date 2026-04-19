@@ -21,73 +21,124 @@ public class BniCounterpartyExtractor extends AbstractCounterpartyExtractor {
         return "BNI";
     }
 
+    /**
+     * BNI menggunakan spasi ganda ("  ") sebagai pemisah antara Nama dan Catatan/Remark.
+     * Kita override agar spasi ganda tidak hilang saat normalisasi awal.
+     */
+    @Override
+    protected String normalizeText(String raw) {
+        if (raw == null) return "";
+        return raw.toUpperCase()
+                .replaceAll("[\\r\\n]+", " ")
+                .trim();
+    }
+
     @Override
     public String extract(String rawDescription, boolean isCredit) {
         if (rawDescription == null || rawDescription.trim().isEmpty()) return null;
 
-        // Membersihkan spasi ganda dan karakter newline
+        // Mendapatkan teks mentah berspasi ganda
         String text = normalizeText(rawDescription);
 
         // ==============================================================================
-        // 1. SETOR TUNAI
-        // Contoh CR: "SETOR TUNAI | PRATAMA ABADI SENTOSA"
-        // ==============================================================================
-        Matcher mSetor = Pattern.compile("SETOR TUNAI\\s*\\|\\s*(.+)").matcher(text);
-        if (mSetor.find()) {
-            return truncate(mSetor.group(1).trim());
-        }
-
-        // ==============================================================================
-        // 2. PEMINDAHAN (TRANSFER) KE ANTAR REKENING BNI ATAU REGULER
-        // Contoh DB: "TRANSFER KE | PEMINDAHAN KE 832070460 Bpk HENDRA GUNAWAN | hendro 02 agust ..."
-        // Menargetkan pola "PEMINDAHAN KE [angka rekening] [Gelaran] [NAMA]". Gelar (Bpk/Ibu/Sdr) bersifat opsional.
-        // ==============================================================================
-        Matcher mTransferBpk = Pattern.compile("PEMINDAHAN KE\\s+\\d+\\s+(?:Bpk|Ibu|Sdr)?\\s*(.+?)\\s*\\|", Pattern.CASE_INSENSITIVE).matcher(text);
-        if (mTransferBpk.find()) {
-            return truncate(mTransferBpk.group(1).trim());
-        }
-
-        // ==============================================================================
-        // 3. ECHANNEL - TRANSAKSI MASUK (PEMINDAHAN DARI)
-        // Contoh CR: "TRF/PAY/TOP-UP ECHANNEL | PEMINDAHAN DARI 151588883 | 0000000000000000 | PT PRATAMA ABADI SENTOSA"
-        // Target ekstraksi: Segmen paling akhir setelah karakter pipe terakhir ("|").
-        // ==============================================================================
-        Matcher mEchannelDari = Pattern.compile("PEMINDAHAN DARI.*?\\|.*?0{10,}.*?\\|\\s*(.+)", Pattern.CASE_INSENSITIVE).matcher(text);
-        if (mEchannelDari.find()) {
-            String fullSegment = mEchannelDari.group(1).trim();
-            // Hilangkan kata "Lainnya" yang sering terikut di ujung transaksi BNI EChannel Out
-            if (fullSegment.toLowerCase().endsWith("lainnya")) {
-                fullSegment = fullSegment.substring(0, fullSegment.length() - 7).trim();
-            }
-            return truncate(fullSegment);
-        }
-
-        // ==============================================================================
-        // 4. ECHANNEL - TRANSAKSI KELUAR (PEMINDAHAN KE)
-        // Contoh DB: "TRF/PAY/TOP-UP ECHANNEL | PEMINDAHAN KE 658301015781530 | 0000000000000000 | 658301015781530 tohari pci 01 agust 2025"
-        // Target ekstraksi: Mencari bagian teks di antara blok "angka rekening awalan" dan "tanggal/keterangan sisa"
-        // ==============================================================================
-        Matcher mEchannelKe = Pattern.compile("PEMINDAHAN KE.*?\\|.*?0{10,}.*?\\|\\s*\\d+\\s*(.+?)(?:\\s+\\d{2}\\s+(?:jan|feb|mar|apr|mei|jun|jul|agus|sep|okt|nov|des|agust))", Pattern.CASE_INSENSITIVE).matcher(text);
-        if (mEchannelKe.find()) {
-            return truncate(mEchannelKe.group(1).trim());
-        }
-
-        // Fallback untuk EChannel Keluar tanpa tanggal (kalau format terpotong)
-        Matcher mEchannelKeNoDate = Pattern.compile("PEMINDAHAN KE.*?\\|.*?0{10,}.*?\\|\\s*\\d+\\s*(.+?)(?:$|\\s{2,})", Pattern.CASE_INSENSITIVE).matcher(text);
-        if (mEchannelKeNoDate.find()) {
-            return truncate(mEchannelKeNoDate.group(1).trim());
-        }
-
-        // ==============================================================================
-        // 5. PENYESUAIAN JENIS BIAYA (FEES / PAJAK / BUNGA)
-        // Jika tidak masuk pola di atas, maka cek kamus kata kunci umum BNI
+        // 1. PENYESUAIAN JENIS BIAYA (FEES / PAJAK / BUNGA) - Pre-emptive check
         // ==============================================================================
         if (text.contains("BY TRX BIFAST") || text.contains("BIAYA BIFAST")) return "BIAYA BIFAST";
         if (text.contains("JASA GIRO") || text.contains("BUNGA")) return "BUNGA BANK";
         if (text.contains("BIAYA ADM REK") || text.contains("BIAYA ADMINISTRASI") || text.contains("BIAYA ADM")) return "BIAYA ADMINISTRASI";
         if (text.contains("PPH") || text.contains("PAJAK")) return "PAJAK PPH";
 
-        // Fallback pendelegasian akhir jika tidak ada regex bank-specific yang sesuai
+        // ==============================================================================
+        // 2. SETOR TUNAI
+        // ==============================================================================
+        if (text.contains("SETOR TUNAI")) {
+            Matcher mSetor = Pattern.compile("SETOR TUNAI\\s*\\|\\s*(.+)").matcher(text);
+            if (mSetor.find()) return smartClean(mSetor.group(1));
+        }
+
+        // ==============================================================================
+        // 3. MULTI-SEGMENT PIPE LOGIC (ECHANNEL & TRANSFER)
+        // ==============================================================================
+        if (text.contains("|")) {
+            String[] segments = text.split("\\|");
+            for (int i = 0; i < segments.length; i++) segments[i] = segments[i].trim();
+
+            // Kasus ECHANNEL (Biasanya 4 segmen)
+            if (text.contains("ECHANNEL") && segments.length >= 4) {
+                String target = segments[3];
+                
+                // Hilangkan No Rekening di awal target segmen jika ada
+                Matcher mAccInSeg1 = Pattern.compile("\\d{5,}+").matcher(segments[1]);
+                if (mAccInSeg1.find()) {
+                    String accNo = mAccInSeg1.group();
+                    String cleanAccNo = accNo.replaceAll("^0+", "");
+                    String cleanTarget = target.replaceAll("^0+", "");
+
+                    if (cleanTarget.startsWith(cleanAccNo)) {
+                        target = target.replaceAll("^\\d+\\s*", "").trim();
+                    }
+                }
+                
+                return smartClean(target);
+            }
+
+            // Kasus TRANSFER / PEMINDAHAN KE (Minimal 2-3 segmen)
+            for (String seg : segments) {
+                if (seg.contains("PEMINDAHAN KE")) {
+                    Matcher m = Pattern.compile("PEMINDAHAN KE\\s+\\d+\\s+(?:Bpk|Ibu|Sdr)?\\s*(.+)", Pattern.CASE_INSENSITIVE).matcher(seg);
+                    if (m.find()) return smartClean(m.group(1));
+                }
+                if (seg.contains("PEMINDAHAN DARI")) {
+                    Matcher m = Pattern.compile("PEMINDAHAN DARI\\s+\\d+\\s*(.*)", Pattern.CASE_INSENSITIVE).matcher(seg);
+                    if (m.find() && !m.group(1).trim().isEmpty()) return smartClean(m.group(1));
+                }
+            }
+        }
+
+        // ==============================================================================
+        // 4. FALLBACK REGEX UNTUK FORMAT LAIN
+        // ==============================================================================
+        Matcher mTransferBpk = Pattern.compile("PEMINDAHAN KE\\s+\\d+\\s+(?:Bpk|Ibu|Sdr)?\\s*(.+?)(?:\\s*\\||$)", Pattern.CASE_INSENSITIVE).matcher(text);
+        if (mTransferBpk.find()) {
+            return smartClean(mTransferBpk.group(1));
+        }
+
+        // Fallback pendelegasian akhir jika tidak ada pola yang cocok
         return fallback(text);
+    }
+
+    /**
+     * Helper untuk membersihkan Nama dari Catatan (Remark) menggunakan deteksi
+     * spasi ganda dan daftar kata kunci sampah.
+     */
+    private String smartClean(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "UNKNOWN";
+
+        // 1. Deteksi Spasi Lebar (Boundary between Name and Note)
+        // Kita gunakan 3 spasi atau lebih sebagai pemisah aman agar tidak memotong nama 
+        // yang mungkin memiliki typo spasi ganda.
+        if (raw.contains("   ")) {
+            raw = raw.split("\\s{3,}")[0].trim();
+        }
+
+        // 2. Bersihkan pola tanggal (01 AGUST 2025, 02/08/2025, dsb)
+        raw = raw.replaceAll("\\s+\\d{2}[/ ](?:JAN|FEB|MAR|APR|MEI|JUN|JUL|AGUS|AGUST|SEP|OKT|NOV|DES|\\d{2})[/ ]?\\d{0,4}.*$", "");
+        raw = raw.replaceAll("\\s+\\d{2}/\\d{2}/?\\d{0,4}.*$", "");
+
+        // 3. Bersihkan Suffix Sederhana (Jika hanya dipisahkan 1-2 spasi tapi ada di daftar kata sampah)
+        String[] noteSuffixes = {
+            "BON KANTOR", "LAINNYA", "REMARK", "NOTE", "INV", "PAYMENT", 
+            "FORKLIP", "CCTV", "PULSA", "TOKEN", "PAY", "TRF TO", "TRF FROM"
+        };
+        
+        String cleaned = raw.trim();
+        for (String suffix : noteSuffixes) {
+            // Kita gunakan boundary \\b agar tidak memotong nama yang mengandung kata tersebut di tengah
+            String pattern = "\\s+" + suffix + "(?:\\s+.*|$)";
+            cleaned = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(cleaned).replaceAll("").trim();
+        }
+
+        // Terakhir kembalikan dengan pembersihan standar (PT/CV removal)
+        return truncate(cleaned);
     }
 }

@@ -19,14 +19,15 @@ import java.nio.file.Paths;
  *
  * Prinsip SOLID yang diterapkan:
  * - SRP: Class ini HANYA bertugas mengelola file I/O di disk.
- *        Tidak tahu apapun tentang parsing, database, atau business logic.
+ * Tidak tahu apapun tentang parsing, database, atau business logic.
  *
  * Cara kerja:
- * 1. saveFile()       → Menyimpan MultipartFile ke folder uploads/ dengan nama unik.
- * 2. detectType()     → Menganalisis file untuk menentukan apakah PDF digital atau scan/gambar.
- *    - Jika content-type = image/* → IMAGE_SCAN
- *    - Jika .pdf dan ada teks     → PDF_DIGITAL
- *    - Jika .pdf tapi kosong      → IMAGE_SCAN (kemungkinan hasil scan)
+ * 1. saveFile() → Menyimpan MultipartFile ke folder uploads/ dengan nama unik.
+ * 2. detectType() → Menganalisis file untuk menentukan apakah PDF digital atau
+ * scan/gambar.
+ * - Jika content-type = image/* → IMAGE_SCAN
+ * - Jika .pdf dan ada teks → PDF_DIGITAL
+ * - Jika .pdf tapi kosong → IMAGE_SCAN (kemungkinan hasil scan)
  */
 @Slf4j
 @Service
@@ -66,7 +67,8 @@ public class FileStorageService {
     * - File PDF tanpa teks → IMAGE_SCAN (kemungkinan hasil scan/foto)
     *
     * @param savedFile    File yang sudah tersimpan di disk
-    * @param contentType  MIME type dari file (contoh: "application/pdf", "image/png")
+    * @param contentType  MIME type dari file (contoh: "application/pdf",
+    *                     "image/png")
     * @param originalName Nama asli file sebelum disimpan
     * @return Tipe dokumen yang terdeteksi
     */

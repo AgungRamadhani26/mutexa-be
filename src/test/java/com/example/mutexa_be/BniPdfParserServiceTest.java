@@ -22,10 +22,17 @@ public class BniPdfParserServiceTest {
 
     private BniPdfParserService bniPdfParserService;
     private MutationDocument mockDocument;
+    private TransactionRefinementService mockRefinementService;
 
     @BeforeEach
     void setUp() {
-        bniPdfParserService = new BniPdfParserService();
+        mockRefinementService = Mockito.mock(TransactionRefinementService.class);
+        
+        // Mocking behavior dasar agar test normal
+        Mockito.when(mockRefinementService.normalizeDescription(any())).thenAnswer(i -> i.getArgument(0));
+        Mockito.when(mockRefinementService.extractCounterpartyName(any(), any(), anyBoolean())).thenReturn("Mock Counterparty");
+
+        bniPdfParserService = new BniPdfParserService(mockRefinementService);
         mockDocument = new MutationDocument();
     }
 
@@ -38,7 +45,7 @@ public class BniPdfParserServiceTest {
             return;
         }
 
-        List<BankTransaction> transactions = bniPdfParserService.parsePdf(filePath, mockDocument, "dev1");
+        List<BankTransaction> transactions = bniPdfParserService.parse(mockDocument, filePath);
 
         // Print all transactions for manual review during test logic building
         int txNo = 1;
@@ -50,8 +57,10 @@ public class BniPdfParserServiceTest {
                     tx.getAmount(), tx.getBalance(), tx.getRawDescription());
             System.out.println(logLine);
 
-            if (tx.getMutationType() == MutationType.CR) totalCr = totalCr.add(tx.getAmount());
-            if (tx.getMutationType() == MutationType.DB) totalDb = totalDb.add(tx.getAmount());
+            if (tx.getMutationType() == MutationType.CR)
+                totalCr = totalCr.add(tx.getAmount());
+            if (tx.getMutationType() == MutationType.DB)
+                totalDb = totalDb.add(tx.getAmount());
         }
 
         System.out.println("\nTotal CR: " + totalCr);

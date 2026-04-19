@@ -3,40 +3,56 @@ package com.example.mutexa_be.service.parser.bni;
 import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.entity.enums.MutationType;
+import com.example.mutexa_be.entity.enums.TransactionCategory;
+import com.example.mutexa_be.service.TransactionRefinementService;
+import com.example.mutexa_be.service.parser.PdfParserService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
 @Service
-public class BniPdfParserService {
+@RequiredArgsConstructor
+public class BniPdfParserService implements PdfParserService {
+
+    private final TransactionRefinementService transactionRefinementService;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     // =====================================================================
-    // Coordinate Thresholds for BNI PDF Columns
-    // Values derived from empirical observation of BNI e-Statement PDF
+    // Coordinate Thresholds for BNI PDF Columns (Presisi Sumbu-X)
     // =====================================================================
-    private static final float NO_MAX = 50f;
-    private static final float DATE_MAX = 140f;
-    private static final float BRANCH_MAX = 230f;
-    private static final float JOURNAL_MAX = 300f;
-    private static final float DESC_MAX = 585f;
-    private static final float AMOUNT_MAX = 672f;
-    private static final float TYPE_MAX = 710f;
-    // BALANCE > TYPE_MAX
+    private static final float NO_MAX = 45f;
+    private static final float DATE_MAX = 110f;
+    private static final float BRANCH_MAX = 170f;
+    private static final float JOURNAL_MAX = 220f;
+    private static final float DESC_MAX = 415f;
+    private static final float AMOUNT_MAX = 470f;
+    private static final float TYPE_MAX = 510f;
 
-    public List<BankTransaction> parsePdf(String filePath, MutationDocument document, String password) {
+    @Override
+    public String getBankName() {
+        return "BNI";
+    }
+
+    @Override
+    public List<BankTransaction> parse(MutationDocument document, String filePath) {
         log.info("Memulai parsing file PDF BNI: {}", filePath);
         File file = new File(filePath);
 
@@ -44,18 +60,36 @@ public class BniPdfParserService {
             throw new IllegalArgumentException("File PDF BNI tidak ditemukan: " + filePath);
         }
 
-        try (PDDocument pdf = (password != null && !password.isEmpty()) ? Loader.loadPDF(file, password) : Loader.loadPDF(file)) {
-            List<CharInfo> chars = collectChars(pdf);
-            List<ColRow> rows = buildColumnRows(chars);
-            List<RawTx> rawTxs = assembleTransactions(rows);
-            List<BankTransaction> result = toEntities(rawTxs, document);
-
-            log.info("Berhasil mem-parsing PDF BNI. Ditemukan {} buah transaksi.", result.size());
-            return result;
+        try {
+            // 1. Coba buka tanpa password (untuk produksi/masa depan)
+            try (PDDocument pdf = Loader.loadPDF(file)) {
+                return doParse(pdf, document);
+            } catch (InvalidPasswordException e) {
+                // 2. Jika gagal karena password, coba 'dev1' (untuk kebutuhan testing saat ini)
+                log.info("File PDF BNI terproteksi password, mencoba password testing 'dev1'...");
+                try (PDDocument pdf = Loader.loadPDF(file, "dev1")) {
+                    return doParse(pdf, document);
+                } catch (InvalidPasswordException e2) {
+                    // 3. Jika masih gagal, infokan ke user bahwa file bersandi
+                    log.error("File PDF BNI terproteksi password dan password testing tidak cocok.");
+                    throw new RuntimeException("File PDF BNI ini bersandi/diproteksi. Silakan unggah file tanpa sandi.",
+                            e2);
+                }
+            }
         } catch (Exception e) {
             log.error("Gagal parsing PDF BNI: {}", e.getMessage(), e);
-            throw new RuntimeException("Gagal parsing PDF BNI.", e);
+            throw new RuntimeException("Gagal parsing PDF BNI: " + e.getMessage(), e);
         }
+    }
+
+    private List<BankTransaction> doParse(PDDocument pdf, MutationDocument document) throws IOException {
+        List<CharInfo> chars = collectChars(pdf);
+        List<ColRow> rows = buildColumnRows(chars);
+        List<RawTx> rawTxs = assembleTransactions(rows);
+        List<BankTransaction> result = toEntities(rawTxs, document);
+
+        log.info("Berhasil mem-parsing PDF BNI. Ditemukan {} buah transaksi.", result.size());
+        return result;
     }
 
     // =====================================================================
@@ -71,7 +105,11 @@ public class BniPdfParserService {
 
     private static class CharExtractor extends PDFTextStripper {
         final List<CharInfo> result = new ArrayList<>();
-        CharExtractor() throws IOException { super(); }
+
+        CharExtractor() throws IOException {
+            super();
+        }
+
         @Override
         protected void processTextPosition(TextPosition tp) {
             float x = tp.getXDirAdj();
@@ -88,8 +126,13 @@ public class BniPdfParserService {
         final int page;
         final float x, y, width;
         final String text;
+
         CharInfo(int page, float x, float y, float width, String text) {
-            this.page = page; this.x = x; this.y = y; this.width = width; this.text = text;
+            this.page = page;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.text = text;
         }
     }
 
@@ -113,12 +156,14 @@ public class BniPdfParserService {
         // Sort by Page first, then Y, then X to ensure consistent grouping
         chars.sort((c1, c2) -> {
             int pCmp = Integer.compare(c1.page, c2.page);
-            if (pCmp != 0) return pCmp;
+            if (pCmp != 0)
+                return pCmp;
             int yCmp = Float.compare(c1.y, c2.y);
             if (Math.abs(c1.y - c2.y) < 3.0f) {
                 yCmp = 0;
             }
-            if (yCmp != 0) return yCmp;
+            if (yCmp != 0)
+                return yCmp;
             return Float.compare(c1.x, c2.x);
         });
 
@@ -138,7 +183,8 @@ public class BniPdfParserService {
             }
             currentLine.add(c);
         }
-        if (!currentLine.isEmpty()) rawLines.add(currentLine);
+        if (!currentLine.isEmpty())
+            rawLines.add(currentLine);
 
         List<ColRow> rows = new ArrayList<>();
 
@@ -158,35 +204,43 @@ public class BniPdfParserService {
             Float lastX = null;
 
             for (CharInfo c : lineChars) {
-                // Add space if gap is large enough (e.g. > 2.0 points)
-                boolean addSpace = (lastX != null && (c.x - lastX) > 2.0f);
+                // Add space if gap is large enough (e.g. > 0.5 points)
+                boolean addSpace = (lastX != null && (c.x - lastX) > 0.5f);
 
                 if (c.x < NO_MAX) {
-                    if (addSpace && noB.length() > 0) noB.append(" ");
+                    if (addSpace && noB.length() > 0)
+                        noB.append(" ");
                     noB.append(c.text);
                 } else if (c.x < DATE_MAX) {
-                    if (addSpace && dateB.length() > 0) dateB.append(" ");
+                    if (addSpace && dateB.length() > 0)
+                        dateB.append(" ");
                     dateB.append(c.text);
                 } else if (c.x < BRANCH_MAX) {
-                    if (addSpace && branchB.length() > 0) branchB.append(" ");
+                    if (addSpace && branchB.length() > 0)
+                        branchB.append(" ");
                     branchB.append(c.text);
                 } else if (c.x < JOURNAL_MAX) {
-                    if (addSpace && jourB.length() > 0) jourB.append(" ");
+                    if (addSpace && jourB.length() > 0)
+                        jourB.append(" ");
                     jourB.append(c.text);
                 } else if (c.x < DESC_MAX) {
-                    if (addSpace && descB.length() > 0) descB.append(" ");
+                    if (addSpace && descB.length() > 0)
+                        descB.append(" ");
                     descB.append(c.text);
                 } else if (c.x < AMOUNT_MAX) {
-                    if (addSpace && amtB.length() > 0) amtB.append(" ");
+                    if (addSpace && amtB.length() > 0)
+                        amtB.append(" ");
                     amtB.append(c.text);
                 } else if (c.x < TYPE_MAX) {
-                    if (addSpace && typeB.length() > 0) typeB.append(" ");
+                    if (addSpace && typeB.length() > 0)
+                        typeB.append(" ");
                     typeB.append(c.text);
                 } else {
-                    if (addSpace && balB.length() > 0) balB.append(" ");
+                    if (addSpace && balB.length() > 0)
+                        balB.append(" ");
                     balB.append(c.text);
                 }
-                
+
                 // Track exact character ending for next gap check
                 lastX = c.x + c.width;
             }
@@ -205,7 +259,6 @@ public class BniPdfParserService {
             }
 
             if (isDataRow(row)) {
-                System.out.println("Parsed Row -> DATE:[" + row.date + "] DESC:[" + row.desc + "] AMT:[" + row.amount + "] TYPE:[" + row.type + "] NO:[" + row.no + "] BR:[" + row.branch + "]");
                 rows.add(row);
             }
         }
@@ -213,11 +266,14 @@ public class BniPdfParserService {
     }
 
     private boolean isDataRow(ColRow r) {
-        // Teks halaman, header kolom, dll akan diabaikan karena tdak ada format tanggal atau desimal
+        // Teks halaman, header kolom, dll akan diabaikan karena tdak ada format tanggal
+        // atau desimal
         // Row berharga setidaknya punya Deskripsi, Tipe, atau Amount
-        if (r.desc.equalsIgnoreCase("Description") && r.amount.equalsIgnoreCase("Amount")) return false;
-        if (r.desc.toLowerCase().contains("total debit")) return false; // Footer indicator
-        
+        if (r.desc.equalsIgnoreCase("Description") && r.amount.equalsIgnoreCase("Amount"))
+            return false;
+        if (r.desc.toLowerCase().contains("total debit"))
+            return false; // Footer indicator
+
         return !r.desc.isEmpty() || !r.date.isEmpty() || !r.amount.isEmpty();
     }
 
@@ -251,7 +307,7 @@ public class BniPdfParserService {
                 currentTx.amount = row.amount;
                 currentTx.type = row.type;
                 currentTx.balance = row.balance;
-                
+
                 // Hanya masukkan Description saja, biarkan Branch tertinggal!
                 if (!row.desc.isEmpty()) {
                     currentTx.descBuilder.append(row.desc);
@@ -263,7 +319,7 @@ public class BniPdfParserService {
                 }
             }
         }
-        
+
         if (currentTx != null) {
             transactions.add(currentTx);
         }
@@ -276,38 +332,63 @@ public class BniPdfParserService {
 
     private List<BankTransaction> toEntities(List<RawTx> rawTxs, MutationDocument doc) {
         List<BankTransaction> result = new ArrayList<>();
+        Map<String, Integer> hashCounters = new HashMap<>();
 
         for (RawTx r : rawTxs) {
             try {
                 LocalDate tDate = LocalDate.parse(r.date, DATE_FORMATTER);
-                
+
                 // Angka dari PDFBox bisa mengandung spasi dan koma
                 String amtClean = r.amount.replace(",", "").replace(" ", "");
                 String balClean = r.balance.replace(",", "").replace(" ", "");
-                
+
                 BigDecimal amount = new BigDecimal(amtClean);
                 BigDecimal balance = balClean.isEmpty() ? BigDecimal.ZERO : new BigDecimal(balClean);
 
                 MutationType type = r.type.equalsIgnoreCase("C") ? MutationType.CR : MutationType.DB;
-                String finalDesc = r.descBuilder.toString().trim();
+                String rawDesc = r.descBuilder.toString().trim();
+
+                // Refinement
+                String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
+                String counterpartyName = transactionRefinementService.extractCounterpartyName("BNI", rawDesc,
+                        type == MutationType.CR);
+
+                // Hash generation matching Mandiri/Generic pattern
+                String baseHash = tDate + "_" + amount.toPlainString() + "_" + normalizedDesc;
+                int occ = hashCounters.getOrDefault(baseHash, 0);
+                hashCounters.put(baseHash, occ + 1);
+                String uniqueHash = generateMd5Hash(baseHash + "_" + occ);
+
+                // Kategori awal dari rule engine (akan di-enrich lagi oleh
+                // CategorizationService)
+                TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc,
+                        type == MutationType.CR);
 
                 BankTransaction tx = BankTransaction.builder()
                         .mutationDocument(doc)
                         .bankAccount(doc.getBankAccount())
                         .transactionDate(tDate)
-                        .rawDescription(finalDesc) // SEKARANG MURNI TANPA BRANCH
-                        .normalizedDescription(finalDesc)
+                        .rawDescription(rawDesc)
+                        .normalizedDescription(normalizedDesc)
+                        .counterpartyName(counterpartyName)
                         .mutationType(type)
                         .amount(amount)
                         .balance(balance)
-                        //duplicate hash diisi di luar oleh service
+                        .category(finalCategory) // Diset otomatis berdasarkan rule engine
+                        .duplicateHash(uniqueHash)
+                        .isExcluded(false)
                         .build();
 
                 result.add(tx);
             } catch (Exception e) {
-                log.warn("Gagal konversi RawTx ke entity (BNI). Date: {}, Desc: {}, Amt: {}", r.date, r.descBuilder.toString(), r.amount, e);
+                log.warn("Gagal konversi RawTx ke entity (BNI). Date: {}, Desc: {}, Amt: {}", r.date,
+                        r.descBuilder.toString(), r.amount, e);
             }
         }
         return result;
+    }
+
+    private String generateMd5Hash(String input) {
+        return DigestUtils.md5DigestAsHex(input.getBytes(StandardCharsets.UTF_8));
     }
 }
