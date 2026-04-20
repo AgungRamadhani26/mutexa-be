@@ -218,9 +218,10 @@ public class UobPdfParserService implements PdfParserService {
 
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
       String cpName = transactionRefinementService.extractCounterpartyName("UOB", builder.rawDescription, finalType == MutationType.CR);
-      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalType == MutationType.CR);
+      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalAmount, finalType == MutationType.CR);
 
-      String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
+      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
       hashCounters.put(baseHashStr, occurrenceIndex + 1);
 

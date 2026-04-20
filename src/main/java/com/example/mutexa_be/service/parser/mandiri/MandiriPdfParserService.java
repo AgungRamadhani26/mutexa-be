@@ -468,10 +468,13 @@ public class MandiriPdfParserService implements PdfParserService {
             String cpName = transactionRefinementService.extractCounterpartyName(
                     "Mandiri", rawDesc, type == MutationType.CR);
             TransactionCategory category = transactionRefinementService.categorizeTransaction(
-                    normalizedDesc, type == MutationType.CR);
+                    normalizedDesc, amount, type == MutationType.CR);
 
             // Hash (MD5, consistent with other parsers)
-            String baseHash = txDate + "_" + amount.toPlainString() + "_" + normalizedDesc;
+            // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda
+            // tidak tabrakan
+            String baseHash = doc.getBankAccount().getId() + "_" + txDate + "_" + amount.toPlainString() + "_"
+                    + normalizedDesc;
             int occ = hashCounters.getOrDefault(baseHash, 0);
             hashCounters.put(baseHash, occ + 1);
 

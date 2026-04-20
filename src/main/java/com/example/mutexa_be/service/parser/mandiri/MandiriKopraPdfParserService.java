@@ -178,9 +178,10 @@ public class MandiriKopraPdfParserService implements PdfParserService {
       String cpName = transactionRefinementService.extractCounterpartyName("Mandiri", builder.rawDescription,
             finalType == MutationType.CR);
       TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc,
-            finalType == MutationType.CR);
+            finalAmount, finalType == MutationType.CR);
 
-      String baseHashStr = builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
+      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
       hashCounters.put(baseHashStr, occurrenceIndex + 1);
 

@@ -243,9 +243,10 @@ public class BcaPdfParserService implements PdfParserService {
                 cpName = cpName.substring(0, 252) + "...";
             }
 
-            TransactionCategory category = transactionRefinementService.categorizeTransaction(normalizedDesc, b.type == MutationType.CR);
-
-            String baseHash = b.date.toString() + "_" + b.amount.toPlainString() + "_" + normalizedDesc;
+            TransactionCategory category = transactionRefinementService.categorizeTransaction(normalizedDesc, b.amount, b.type == MutationType.CR);
+            
+            // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
+            String baseHash = document.getBankAccount().getId() + "_" + b.date.toString() + "_" + b.amount.toPlainString() + "_" + normalizedDesc;
             int count = hashCounters.getOrDefault(baseHash, 0);
             hashCounters.put(baseHash, count + 1);
             String finalHash = generateMd5Hash(baseHash + "_" + count);
