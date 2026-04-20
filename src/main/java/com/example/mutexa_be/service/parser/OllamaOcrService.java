@@ -266,7 +266,7 @@ public class OllamaOcrService {
                 .mutationType(type)
                 .amount(amount)
                 .balance(balance)
-                .category(TransactionCategory.UNCLASSIFIED) // Semua di-set UNCATED. Kategori dipisah di fase 7
+                .category(TransactionCategory.TRANSFER) // Default category is TRANSFER
                 .build();
                 
         // 5. Generate MD5 keunikan (Idempotensi: Gabungan FileId + Tgl + Jumlah + DB/CR + Tipe)

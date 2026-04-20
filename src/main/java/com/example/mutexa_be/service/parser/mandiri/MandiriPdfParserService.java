@@ -352,9 +352,9 @@ public class MandiriPdfParserService implements PdfParserService {
      * <p>
      * Transaction boundaries are detected by:
      * <ul>
-     *   <li>Core rows (No + Nominal + Saldo filled)</li>
-     *   <li>Large Y gaps indicating visual separation between transaction blocks</li>
-     *   <li>Pending before-context accumulation (desc/date found before core)</li>
+     * <li>Core rows (No + Nominal + Saldo filled)</li>
+     * <li>Large Y gaps indicating visual separation between transaction blocks</li>
+     * <li>Pending before-context accumulation (desc/date found before core)</li>
      * </ul>
      */
     private List<RawTx> assembleTransactions(List<ColRow> rows) {
@@ -369,7 +369,8 @@ public class MandiriPdfParserService implements PdfParserService {
 
             if (r.isCoreRow()) {
                 // ── CORE ROW: Finalize previous TX, start new one ──
-                if (current != null) transactions.add(current);
+                if (current != null)
+                    transactions.add(current);
 
                 current = new RawTx();
                 current.nominalStr = r.nominal;
@@ -384,19 +385,21 @@ public class MandiriPdfParserService implements PdfParserService {
 
                 // Description: prepend pending before-context, then core's own desc
                 current.descParts.addAll(pendingDesc);
-                if (!r.desc.isEmpty()) current.descParts.add(r.desc);
+                if (!r.desc.isEmpty())
+                    current.descParts.add(r.desc);
 
                 pendingDesc.clear();
-                    
+
                 pendingDate = null;
 
             } else if (r.hasDate()) {
                 // ── DATE ROW: Save as pending for next core row ──
                 pendingDate = parseDate(r.date);
-                if (!r.desc.isEmpty()) pendingDesc.add(r.desc);
+                if (!r.desc.isEmpty())
+                    pendingDesc.add(r.desc);
 
             } else if (r.hasTime()) {
-                    
+
                 // ── TIME ROW: After-context for current transaction ──
                 if (current != null && !r.desc.isEmpty()) {
                     current.descParts.add(r.desc);
@@ -405,13 +408,12 @@ public class MandiriPdfParserService implements PdfParserService {
             } else if (!r.desc.isEmpty()) {
                 // ── DESCRIPTION-ONLY ROW ──
                 // Determine if this is after-context (current TX) or before-context (next TX)
-                boolean isBeforeContext =
-                        current == null              // no transaction yet
-                        || pendingDate != null       // date already found for next TX
-                        || !pendingDesc.isEmpty()    // already accumulating before-context
-                        || gap > TX_BOUNDARY_GAP;    // large visual gap = new block
- 
-                if (isBeforeContext) { 
+                boolean isBeforeContext = current == null // no transaction yet
+                        || pendingDate != null // date already found for next TX
+                        || !pendingDesc.isEmpty() // already accumulating before-context
+                        || gap > TX_BOUNDARY_GAP; // large visual gap = new block
+
+                if (isBeforeContext) {
                     pendingDesc.add(r.desc);
                 } else {
                     current.descParts.add(r.desc);
@@ -421,10 +423,10 @@ public class MandiriPdfParserService implements PdfParserService {
             lastAbsY = r.absY;
         }
 
-        if (current != null) transactions.add(current);
+        if (current != null)
+            transactions.add(current);
         return transactions;
     }
-            
 
     // =====================================================================
     // PHASE 5: CONVERT TO BANK TRANSACTION ENTITIES
@@ -448,13 +450,14 @@ public class MandiriPdfParserService implements PdfParserService {
             String nomStr = raw.nominalStr.trim();
             MutationType type;
             if (nomStr.startsWith("+")) {
-                type = MutationType.CR; nomStr = nomStr.substring(1);
+                type = MutationType.CR;
+                nomStr = nomStr.substring(1);
             } else if (nomStr.startsWith("-")) {
                 type = MutationType.DB;
                 nomStr = nomStr.substring(1);
             } else {
                 type = MutationType.DB;
-                
+
             }
 
             BigDecimal amount = parseIndonesianAmount(nomStr);
@@ -495,7 +498,8 @@ public class MandiriPdfParserService implements PdfParserService {
     // =====================================================================
 
     private LocalDate parseDate(String s) {
-        if (s == null || s.isBlank()) return null;
+        if (s == null || s.isBlank())
+            return null;
         try {
             // Extract just the date part (in case of trailing text)
             var m = DATE_PAT.matcher(s.trim());
@@ -511,7 +515,8 @@ public class MandiriPdfParserService implements PdfParserService {
 
     /** Parse Indonesian-format amount (dot = thousands, comma = decimal). */
     private BigDecimal parseIndonesianAmount(String s) {
-        if (s == null || s.isBlank()) return BigDecimal.ZERO;
+        if (s == null || s.isBlank())
+            return BigDecimal.ZERO;
         try {
             return new BigDecimal(s.replace(".", "").replace(",", ".").trim())
                     .setScale(4, RoundingMode.HALF_UP);
@@ -527,7 +532,8 @@ public class MandiriPdfParserService implements PdfParserService {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
+            for (byte b : hash)
+                sb.append(String.format("%02x", b));
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);

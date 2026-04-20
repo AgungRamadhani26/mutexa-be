@@ -67,6 +67,39 @@ public class DashboardController {
    }
 
    /**
+    * Endpoint khusus untuk mengambil transaksi kategori ADMIN.
+    */
+   @GetMapping("/admin-transactions")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getAdminTransactions(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId, 
+            com.example.mutexa_be.entity.enums.TransactionCategory.ADMIN);
+      return ResponseUtil.ok(data, "Berhasil mengambil data transaksi admin.");
+   }
+
+   /**
+    * Endpoint khusus untuk mengambil transaksi kategori TAX (Pajak).
+    */
+   @GetMapping("/tax-transactions")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getTaxTransactions(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId, 
+            com.example.mutexa_be.entity.enums.TransactionCategory.TAX);
+      return ResponseUtil.ok(data, "Berhasil mengambil data transaksi pajak.");
+   }
+
+   /**
+    * Endpoint khusus untuk mengambil transaksi kategori INTEREST (Bunga).
+    */
+   @GetMapping("/interest-transactions")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getInterestTransactions(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId, 
+            com.example.mutexa_be.entity.enums.TransactionCategory.INTEREST);
+      return ResponseUtil.ok(data, "Berhasil mengambil data transaksi bunga.");
+   }
+
+   /**
     * Endpoint untuk Top 10 Credit Amount.
     * 
     * @param documentId ID milik MutationDocument

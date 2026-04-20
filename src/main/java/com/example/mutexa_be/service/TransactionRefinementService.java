@@ -77,6 +77,6 @@ public class TransactionRefinementService {
     * Menganalisis description dan jumlah masuk/keluar untuk memandu ke kategori.
     */
    public TransactionCategory categorizeTransaction(String normalizedDescription, boolean isCredit) {
-      return TransactionCategory.UNCLASSIFIED;
+      return TransactionCategory.TRANSFER;
    }
 }

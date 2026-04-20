@@ -153,6 +153,19 @@ public class DashboardService {
             .build()).collect(Collectors.toList());
    }
 
+   public List<DetailTransaksiResponse> getTransactionsByCategory(Long documentId, com.example.mutexa_be.entity.enums.TransactionCategory category) {
+      List<BankTransaction> transactions = bankTransactionRepository.findAllByMutationDocumentIdAndCategoryOrderByTransactionDateAscIdAsc(documentId, category);
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .saldo(tx.getBalance())
+            .isExcluded(tx.getIsExcluded())
+            .build()).collect(Collectors.toList());
+   }
+
    public List<DetailTransaksiResponse> getTop10CreditAmount(Long documentId) {
       List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
             documentId, com.example.mutexa_be.entity.enums.MutationType.CR);

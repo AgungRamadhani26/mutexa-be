@@ -4,7 +4,5 @@ public enum TransactionCategory {
    TAX,
    INTEREST,
    ADMIN,
-   TRANSFER,
-   ANOMALY,
-   UNCLASSIFIED
+   TRANSFER
 }
