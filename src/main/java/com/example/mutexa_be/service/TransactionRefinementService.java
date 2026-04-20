@@ -55,8 +55,9 @@ public class TransactionRefinementService {
     * Ini adalah entry point utama yang dipanggil dari masing-masing parser.
     */
    public String extractCounterpartyName(String bankName, String rawDescription, boolean isCredit) {
-      if (rawDescription == null || rawDescription.trim().isEmpty()) return null;
-      
+      if (rawDescription == null || rawDescription.trim().isEmpty())
+         return null;
+
       CounterpartyExtractor extractor = bankName != null ? extractorMap.get(bankName.toUpperCase()) : null;
       if (extractor == null) {
          extractor = genericExtractor; // fallback to generic
