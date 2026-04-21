@@ -13,11 +13,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DetailTransaksiResponse {
-   private Long id;           // ID transaksi untuk toggle exclude
+   private Long id; // ID transaksi untuk toggle exclude
    private String tanggal;
    private String keterangan;
    private String flag; // CR / DB
    private BigDecimal jumlah;
    private BigDecimal saldo;
    private Boolean isExcluded; // Status exclusion
+   private String category; // Kategori: ADMIN, TAX, INTEREST, TRANSFER
 }

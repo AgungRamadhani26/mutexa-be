@@ -150,6 +150,7 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
             .build()).collect(Collectors.toList());
    }
 
@@ -163,6 +164,7 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
             .build()).collect(Collectors.toList());
    }
 
@@ -176,6 +178,7 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
             .build()).collect(Collectors.toList());
    }
 
@@ -189,6 +192,7 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
             .build()).collect(Collectors.toList());
    }
 
