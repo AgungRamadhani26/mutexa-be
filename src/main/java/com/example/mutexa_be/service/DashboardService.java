@@ -61,21 +61,31 @@ public class DashboardService {
       BigDecimal avgDebit = BigDecimal.ZERO;
       int jumlahBulan = 0;
 
+      BigDecimal cleanedTotalCredit = BigDecimal.ZERO;
+      BigDecimal cleanedTotalDebit = BigDecimal.ZERO;
+      BigDecimal cleanedAvgCredit = BigDecimal.ZERO;
+      BigDecimal cleanedAvgDebit = BigDecimal.ZERO;
+
       if (!rows.isEmpty() && rows.get(0) != null) {
          Object[] row = rows.get(0);
          totalCredit = row[0] != null ? new BigDecimal(row[0].toString()) : BigDecimal.ZERO;
          totalDebit = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
          jumlahBulan = row[2] != null ? ((Number) row[2]).intValue() : 1;
 
-         avgCredit = jumlahBulan > 0
-               ? totalCredit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
-               : BigDecimal.ZERO;
-         avgDebit = jumlahBulan > 0
-               ? totalDebit.divide(BigDecimal.valueOf(jumlahBulan), 2, java.math.RoundingMode.HALF_UP)
-               : BigDecimal.ZERO;
+         cleanedTotalCredit = row[3] != null ? new BigDecimal(row[3].toString()) : BigDecimal.ZERO;
+         cleanedTotalDebit = row[4] != null ? new BigDecimal(row[4].toString()) : BigDecimal.ZERO;
+
+         if (jumlahBulan > 0) {
+            BigDecimal bJumlahBulan = BigDecimal.valueOf(jumlahBulan);
+            avgCredit = totalCredit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
+            avgDebit = totalDebit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
+            
+            cleanedAvgCredit = cleanedTotalCredit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
+            cleanedAvgDebit = cleanedTotalDebit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
+         }
       }
 
-      // Hitung Average Daily Balance (ADB)
+      // Hitung Average Daily Balance (ADB) - Selalu data Asli sesuai feedback user
       BigDecimal avgDailyBalance = BigDecimal.ZERO;
       List<BankTransaction> txs = bankTransactionRepository.findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
 
@@ -137,6 +147,10 @@ public class DashboardService {
             .avgDebit(avgDebit)
             .jumlahBulan(jumlahBulan)
             .avgDailyBalance(avgDailyBalance)
+            .cleanedTotalCredit(cleanedTotalCredit)
+            .cleanedTotalDebit(cleanedTotalDebit)
+            .cleanedAvgCredit(cleanedAvgCredit)
+            .cleanedAvgDebit(cleanedAvgDebit)
             .build();
    }
 

@@ -32,8 +32,8 @@ public class MandiriPdfParserServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         Mockito.when(mockRefinement.extractCounterpartyName(anyString(), anyString(), anyBoolean()))
                 .thenReturn("MOCK_CP");
-        Mockito.when(mockRefinement.categorizeTransaction(anyString(), anyBoolean()))
-                .thenReturn(TransactionCategory.UNCLASSIFIED);
+        Mockito.when(mockRefinement.categorizeTransaction(anyString(), any(BigDecimal.class), anyBoolean()))
+                .thenReturn(TransactionCategory.TRANSFER);
 
         parser = new MandiriPdfParserService(mockRefinement);
     }

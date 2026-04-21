@@ -18,4 +18,10 @@ public class RingkasanSaldoResponse {
    private BigDecimal avgDebit;
    private Integer jumlahBulan; // berapa bulan data yang dihitung
    private BigDecimal avgDailyBalance;
+
+   // Fields for Window Dressing (After exclusion)
+   private BigDecimal cleanedTotalCredit;
+   private BigDecimal cleanedTotalDebit;
+   private BigDecimal cleanedAvgCredit;
+   private BigDecimal cleanedAvgDebit;
 }

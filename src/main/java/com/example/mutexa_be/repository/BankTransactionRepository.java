@@ -82,7 +82,9 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
    @Query(value = "SELECT " +
          "    SUM(CASE WHEN t.mutation_type = 'CR' THEN t.amount ELSE 0 END) AS totalCredit, " +
          "    SUM(CASE WHEN t.mutation_type = 'DB' THEN t.amount ELSE 0 END) AS totalDebit, " +
-         "    COUNT(DISTINCT CAST(YEAR(t.transaction_date) AS VARCHAR) + '-' + CAST(MONTH(t.transaction_date) AS VARCHAR)) AS jumlahBulan " +
+         "    COUNT(DISTINCT CAST(YEAR(t.transaction_date) AS VARCHAR) + '-' + CAST(MONTH(t.transaction_date) AS VARCHAR)) AS jumlahBulan, " +
+         "    SUM(CASE WHEN t.mutation_type = 'CR' AND (t.is_excluded = 0 OR t.is_excluded IS NULL) THEN t.amount ELSE 0 END) AS cleanedTotalCredit, " +
+         "    SUM(CASE WHEN t.mutation_type = 'DB' AND (t.is_excluded = 0 OR t.is_excluded IS NULL) THEN t.amount ELSE 0 END) AS cleanedTotalDebit " +
          "FROM bank_transaction t " +
          "WHERE t.document_id = :documentId", nativeQuery = true)
    List<Object[]> getRingkasanSaldoByDocumentId(Long documentId);
