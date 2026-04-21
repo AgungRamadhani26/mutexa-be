@@ -489,7 +489,9 @@ public class MandiriPdfParserService implements PdfParserService {
                     .amount(amount)
                     .balance(balance)
                     .category(category)
-                    .isExcluded(false)
+                    .isExcluded(category == TransactionCategory.ADMIN || 
+                                category == TransactionCategory.TAX || 
+                                category == TransactionCategory.INTEREST)
                     .duplicateHash(generateMd5Hash(baseHash + "_" + occ))
                     .build());
         }

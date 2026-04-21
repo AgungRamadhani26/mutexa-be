@@ -280,7 +280,9 @@ public class BriPdfParserService implements PdfParserService {
             .amount(finalAmount)
             .balance(valSaldo)
             .category(finalCategory) // Diset otomatis berdasarkan rule engine
-            .isExcluded(false)
+            .isExcluded(finalCategory == TransactionCategory.ADMIN || 
+                        finalCategory == TransactionCategory.TAX || 
+                        finalCategory == TransactionCategory.INTEREST)
             .duplicateHash(finalHash)
             .build();
    }

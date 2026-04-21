@@ -262,7 +262,9 @@ public class BcaPdfParserService implements PdfParserService {
                     .amount(b.amount)
                     .balance(b.finalBalance)
                     .category(category)
-                    .isExcluded(false)
+                    .isExcluded(category == TransactionCategory.ADMIN || 
+                                category == TransactionCategory.TAX || 
+                                category == TransactionCategory.INTEREST)
                     .duplicateHash(finalHash)
                     .build());
         }

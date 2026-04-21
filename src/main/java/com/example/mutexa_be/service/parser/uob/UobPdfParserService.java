@@ -239,7 +239,9 @@ public class UobPdfParserService implements PdfParserService {
             .amount(finalAmount)
             .balance(valSaldo)
             .category(finalCategory)
-            .isExcluded(false)
+            .isExcluded(finalCategory == TransactionCategory.ADMIN || 
+                        finalCategory == TransactionCategory.TAX || 
+                        finalCategory == TransactionCategory.INTEREST)
             .duplicateHash(finalHash)
             .build();
    }

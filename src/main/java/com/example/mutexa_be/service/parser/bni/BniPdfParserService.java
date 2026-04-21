@@ -377,7 +377,9 @@ public class BniPdfParserService implements PdfParserService {
                         .balance(balance)
                         .category(finalCategory) // Diset otomatis berdasarkan rule engine
                         .duplicateHash(uniqueHash)
-                        .isExcluded(false)
+                        .isExcluded(finalCategory == TransactionCategory.ADMIN || 
+                                    finalCategory == TransactionCategory.TAX || 
+                                    finalCategory == TransactionCategory.INTEREST)
                         .build();
 
                 result.add(tx);
