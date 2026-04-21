@@ -354,8 +354,10 @@ public class BniPdfParserService implements PdfParserService {
                         type == MutationType.CR);
 
                 // Hash generation matching Mandiri/Generic pattern
-                // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
-                String baseHash = doc.getBankAccount().getId() + "_" + tDate + "_" + amount.toPlainString() + "_" + normalizedDesc;
+                // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda
+                // tidak tabrakan
+                String baseHash = doc.getBankAccount().getId() + "_" + tDate + "_" + amount.toPlainString() + "_"
+                        + normalizedDesc;
                 int occ = hashCounters.getOrDefault(baseHash, 0);
                 hashCounters.put(baseHash, occ + 1);
                 String uniqueHash = generateMd5Hash(baseHash + "_" + occ);
@@ -377,9 +379,9 @@ public class BniPdfParserService implements PdfParserService {
                         .balance(balance)
                         .category(finalCategory) // Diset otomatis berdasarkan rule engine
                         .duplicateHash(uniqueHash)
-                        .isExcluded(finalCategory == TransactionCategory.ADMIN || 
-                                    finalCategory == TransactionCategory.TAX || 
-                                    finalCategory == TransactionCategory.INTEREST)
+                        .isExcluded(finalCategory == TransactionCategory.ADMIN ||
+                                finalCategory == TransactionCategory.TAX ||
+                                finalCategory == TransactionCategory.INTEREST)
                         .build();
 
                 result.add(tx);

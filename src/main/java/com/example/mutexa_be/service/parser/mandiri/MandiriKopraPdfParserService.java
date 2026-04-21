@@ -180,8 +180,10 @@ public class MandiriKopraPdfParserService implements PdfParserService {
       TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc,
             finalAmount, finalType == MutationType.CR);
 
-      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
-      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda
+      // tidak tabrakan
+      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_"
+            + finalAmount.toPlainString() + "_" + normalizedDesc;
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
       hashCounters.put(baseHashStr, occurrenceIndex + 1);
 
@@ -199,9 +201,9 @@ public class MandiriKopraPdfParserService implements PdfParserService {
             .amount(finalAmount)
             .balance(valSaldo)
             .category(finalCategory) // diset otomatis dari RefinementService
-            .isExcluded(finalCategory == TransactionCategory.ADMIN || 
-                        finalCategory == TransactionCategory.TAX || 
-                        finalCategory == TransactionCategory.INTEREST)
+            .isExcluded(finalCategory == TransactionCategory.ADMIN ||
+                  finalCategory == TransactionCategory.TAX ||
+                  finalCategory == TransactionCategory.INTEREST)
             .duplicateHash(finalHash)
             .build();
    }

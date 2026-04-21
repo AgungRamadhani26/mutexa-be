@@ -37,13 +37,16 @@ public class BcaPdfParserService implements PdfParserService {
     private final TransactionRefinementService transactionRefinementService;
 
     @Override
-    public String getBankName() { return "BCA"; }
+    public String getBankName() {
+        return "BCA";
+    }
 
     // Pattern untuk deteksi tahun dari header "PERIODE : JANUARI 2025"
     private static final Pattern PERIOD_PATTERN = Pattern.compile("PERIODE\\s*:\\s*(\\w+)\\s+(\\d{4})");
 
     // Pattern untuk deteksi Saldo Awal "01/01 SALDO AWAL -1,944,261,238.19"
-    private static final Pattern INITIAL_BALANCE_PATTERN = Pattern.compile("^(\\d{2}/\\d{2})\\s+SALDO AWAL\\s+(-?[\\d,.]+)$");
+    private static final Pattern INITIAL_BALANCE_PATTERN = Pattern
+            .compile("^(\\d{2}/\\d{2})\\s+SALDO AWAL\\s+(-?[\\d,.]+)$");
 
     // Pattern untuk baris transaksi utama
     // Group 1: Date (01/01)
@@ -51,9 +54,10 @@ public class BcaPdfParserService implements PdfParserService {
     // Group 3: Amount (1.234.567.00)
     // Group 4: DB indicator (optional)
     // Group 5: Balance (optional)
-    // Pattern untuk baris transaksi utama: Tanggal Keterangan (CBG-Opsional) Mutasi [Type] [Saldo-Opsional]
-    private static final Pattern TRANSACTION_PATTERN = Pattern.compile("^(\\d{2}/\\d{2})\\s+(.*?)(?:\\s+(\\d{4}))?\\s+([\\d,]+\\.\\d{2})\\s*(DB)?\\s*(-?[\\d,]+\\.[\\d]{2})?$");
-
+    // Pattern untuk baris transaksi utama: Tanggal Keterangan (CBG-Opsional) Mutasi
+    // [Type] [Saldo-Opsional]
+    private static final Pattern TRANSACTION_PATTERN = Pattern.compile(
+            "^(\\d{2}/\\d{2})\\s+(.*?)(?:\\s+(\\d{4}))?\\s+([\\d,]+\\.\\d{2})\\s*(DB)?\\s*(-?[\\d,]+\\.[\\d]{2})?$");
 
     @Override
     public List<BankTransaction> parse(MutationDocument document, String filePath) {
@@ -68,7 +72,7 @@ public class BcaPdfParserService implements PdfParserService {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setSortByPosition(true); // Sangat penting untuk BCA agar kolom sejajar
             String entireText = stripper.getText(pdfDocument);
-            
+
             transactions = extractTransactions(document, entireText);
             log.info("Berhasil mem-parsing PDF BCA. Ditemukan {} buah transaksi.", transactions.size());
 
@@ -84,10 +88,10 @@ public class BcaPdfParserService implements PdfParserService {
         List<BankTransaction> results = new ArrayList<>();
         List<BcaTransactionBuilder> builders = new ArrayList<>();
         String[] lines = entireText.split("\\r?\\n");
-        
+
         int currentYear = LocalDate.now().getYear();
         BigDecimal runningBalance = BigDecimal.ZERO;
-        
+
         Map<String, Integer> hashCounters = new HashMap<>();
         BcaTransactionBuilder currentBuilder = null;
         boolean skipMode = false;
@@ -95,8 +99,9 @@ public class BcaPdfParserService implements PdfParserService {
 
         for (String line : lines) {
             line = line.trim();
-            if (line.isEmpty()) continue;
-            
+            if (line.isEmpty())
+                continue;
+
             String upperLine = line.toUpperCase();
 
             // 1. Deteksi Transisi Halaman (Header/Footer sampah)
@@ -105,13 +110,16 @@ public class BcaPdfParserService implements PdfParserService {
                 continue;
             }
 
-            // Batas akhir dari header sampah di semua halaman BCA adalah baris Keterangan Mutasi
-            if (upperLine.contains("TANGGAL KETERANGAN") || (upperLine.contains("TANGGAL") && upperLine.contains("KETERANGAN"))) {
+            // Batas akhir dari header sampah di semua halaman BCA adalah baris Keterangan
+            // Mutasi
+            if (upperLine.contains("TANGGAL KETERANGAN")
+                    || (upperLine.contains("TANGGAL") && upperLine.contains("KETERANGAN"))) {
                 skipMode = false;
                 continue;
             }
 
-            // 2. Deteksi Periode/Tahun WALAUPUN sedang di skipMode (Karena periode ada di dalam header)
+            // 2. Deteksi Periode/Tahun WALAUPUN sedang di skipMode (Karena periode ada di
+            // dalam header)
             Matcher periodMatcher = PERIOD_PATTERN.matcher(line);
             if (periodMatcher.find()) {
                 int extractedYear = Integer.parseInt(periodMatcher.group(2));
@@ -121,7 +129,8 @@ public class BcaPdfParserService implements PdfParserService {
                 continue;
             }
 
-            // Jika sedang dalam transisi (misal nama kota, jalan, kode pos), abaikan sisanya
+            // Jika sedang dalam transisi (misal nama kota, jalan, kode pos), abaikan
+            // sisanya
             if (skipMode) {
                 continue;
             }
@@ -143,16 +152,18 @@ public class BcaPdfParserService implements PdfParserService {
 
                 currentBuilder = new BcaTransactionBuilder();
                 String dateStr = txMatcher.group(1); // Format: "DD/MM"
-                
+
                 int parsedDate = Integer.parseInt(dateStr.split("/")[0]);
                 int parsedMonth = Integer.parseInt(dateStr.split("/")[1]);
 
                 // Logika Perpindahan Tahun (Year Rollover Detection)
-                // Jika dari Desember (12) tiba-tiba lompat ke Januari (01), berarti Ganti Tahun Baru!
+                // Jika dari Desember (12) tiba-tiba lompat ke Januari (01), berarti Ganti Tahun
+                // Baru!
                 if (lastParsedMonth != -1) {
                     if (lastParsedMonth == 12 && parsedMonth == 1) {
                         currentYear++;
-                        log.info("Tahun otomatis dikalibrasi maju ke: {} karena transisi Desember-Januari", currentYear);
+                        log.info("Tahun otomatis dikalibrasi maju ke: {} karena transisi Desember-Januari",
+                                currentYear);
                     } else if (lastParsedMonth == 1 && parsedMonth == 12) {
                         // Antisipasi jika data berjalan terbalik namun ini jarang
                         currentYear--;
@@ -164,12 +175,12 @@ public class BcaPdfParserService implements PdfParserService {
                 currentBuilder.description = txMatcher.group(2).trim();
                 currentBuilder.amount = parseAmount(txMatcher.group(4));
                 currentBuilder.type = "DB".equals(txMatcher.group(5)) ? MutationType.DB : MutationType.CR;
-                
+
                 String balanceGroup = txMatcher.group(6);
                 if (balanceGroup != null && !balanceGroup.trim().isEmpty()) {
                     currentBuilder.explicitBalance = parseAmount(balanceGroup);
                 }
-                
+
                 continue;
             }
 
@@ -177,11 +188,11 @@ public class BcaPdfParserService implements PdfParserService {
             if (currentBuilder != null) {
                 // Abaikan footer spesifik internal mutasi
                 if (upperLine.contains("SALDO AWAL :") ||
-                    upperLine.contains("MUTASI CR :") ||
-                    upperLine.contains("MUTASI DB :") ||
-                    upperLine.contains("SALDO AKHIR :") ||
-                    upperLine.contains("C A T A T A N :") ||
-                    upperLine.contains("REKENING GIRO")) {
+                        upperLine.contains("MUTASI CR :") ||
+                        upperLine.contains("MUTASI DB :") ||
+                        upperLine.contains("SALDO AKHIR :") ||
+                        upperLine.contains("C A T A T A N :") ||
+                        upperLine.contains("REKENING GIRO")) {
                     continue;
                 }
 
@@ -209,26 +220,30 @@ public class BcaPdfParserService implements PdfParserService {
         BigDecimal knownFutureBalance = null;
         for (int i = builders.size() - 1; i >= 0; i--) {
             BcaTransactionBuilder b = builders.get(i);
-            
+
             // Jika BCA memberi explicit balance pada baris ini, jadikan patokan!
             if (b.explicitBalance != null) {
                 b.finalBalance = b.explicitBalance;
                 knownFutureBalance = b.explicitBalance;
             } else {
-                // Jika kosong, hitung MUNDUR dari transaksi di bawahnya (yaitu knownFutureBalance)
+                // Jika kosong, hitung MUNDUR dari transaksi di bawahnya (yaitu
+                // knownFutureBalance)
                 if (knownFutureBalance != null) {
                     BcaTransactionBuilder nextTx = builders.get(i + 1);
-                    // Logika Mundur: Jika nextTx adalah Debit (uang keluar), berarti sebelum nextTx saldonya LEBIH BESAR (ditambah)
+                    // Logika Mundur: Jika nextTx adalah Debit (uang keluar), berarti sebelum nextTx
+                    // saldonya LEBIH BESAR (ditambah)
                     if (nextTx.type == MutationType.DB) {
                         knownFutureBalance = knownFutureBalance.add(nextTx.amount);
                     } else {
-                        // Jika nextTx Kredit uang masuk, berarti sebelumnya saldonya LEBIH KECIL (dikurang)
+                        // Jika nextTx Kredit uang masuk, berarti sebelumnya saldonya LEBIH KECIL
+                        // (dikurang)
                         knownFutureBalance = knownFutureBalance.subtract(nextTx.amount);
                     }
                     b.finalBalance = knownFutureBalance;
                 } else {
-                   // Fallback darurat jika baris paling ujung PDF terpotong dan tdk punya explicit balance
-                   b.finalBalance = BigDecimal.ZERO; 
+                    // Fallback darurat jika baris paling ujung PDF terpotong dan tdk punya explicit
+                    // balance
+                    b.finalBalance = BigDecimal.ZERO;
                 }
             }
         }
@@ -237,16 +252,20 @@ public class BcaPdfParserService implements PdfParserService {
         for (BcaTransactionBuilder b : builders) {
             String rawDesc = refineBcaDescription(b.description);
             String normalizedDesc = transactionRefinementService.normalizeDescription(rawDesc);
-            String cpName = transactionRefinementService.extractCounterpartyName("BCA", rawDesc, b.type == MutationType.CR);
-            
+            String cpName = transactionRefinementService.extractCounterpartyName("BCA", rawDesc,
+                    b.type == MutationType.CR);
+
             if (cpName != null && cpName.length() > 255) {
                 cpName = cpName.substring(0, 252) + "...";
             }
 
-            TransactionCategory category = transactionRefinementService.categorizeTransaction(normalizedDesc, b.amount, b.type == MutationType.CR);
-            
-            // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
-            String baseHash = document.getBankAccount().getId() + "_" + b.date.toString() + "_" + b.amount.toPlainString() + "_" + normalizedDesc;
+            TransactionCategory category = transactionRefinementService.categorizeTransaction(normalizedDesc, b.amount,
+                    b.type == MutationType.CR);
+
+            // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda
+            // tidak tabrakan
+            String baseHash = document.getBankAccount().getId() + "_" + b.date.toString() + "_"
+                    + b.amount.toPlainString() + "_" + normalizedDesc;
             int count = hashCounters.getOrDefault(baseHash, 0);
             hashCounters.put(baseHash, count + 1);
             String finalHash = generateMd5Hash(baseHash + "_" + count);
@@ -262,9 +281,9 @@ public class BcaPdfParserService implements PdfParserService {
                     .amount(b.amount)
                     .balance(b.finalBalance)
                     .category(category)
-                    .isExcluded(category == TransactionCategory.ADMIN || 
-                                category == TransactionCategory.TAX || 
-                                category == TransactionCategory.INTEREST)
+                    .isExcluded(category == TransactionCategory.ADMIN ||
+                            category == TransactionCategory.TAX ||
+                            category == TransactionCategory.INTEREST)
                     .duplicateHash(finalHash)
                     .build());
         }
@@ -280,7 +299,8 @@ public class BcaPdfParserService implements PdfParserService {
     }
 
     private BigDecimal parseAmount(String amountStr) {
-        if (amountStr == null) return BigDecimal.ZERO;
+        if (amountStr == null)
+            return BigDecimal.ZERO;
         String cleaned = amountStr.replace(",", "");
         return new BigDecimal(cleaned).setScale(2, RoundingMode.HALF_UP);
     }
@@ -300,18 +320,18 @@ public class BcaPdfParserService implements PdfParserService {
     }
 
     private String refineBcaDescription(String desc) {
-        if (desc == null) return "";
-        
+        if (desc == null)
+            return "";
+
         // 1. Reordering BI-FAST (L1 R1 L2 R2 -> L1 L2 R1 R2)
         // Pola: BI-FAST [CR/DB] [BIF...] TANGGAL :[DD/MM]
         // Seharusnya: BI-FAST [CR/DB] TANGGAL :[DD/MM] [BIF...]
         if (desc.contains("BI-FAST")) {
             desc = desc.replaceAll(
-                "(BI-FAST (?:CR|DB))\\s+(BIF\\s+.*?)\\s+(TANGGAL\\s*:\\s*\\d{2}/\\d{2})",
-                "$1 $3 $2"
-            );
+                    "(BI-FAST (?:CR|DB))\\s+(BIF\\s+.*?)\\s+(TANGGAL\\s*:\\s*\\d{2}/\\d{2})",
+                    "$1 $3 $2");
         }
-        
+
         // 2. Normalisasi Spasi Berlebih
         return desc.replaceAll("\\s+", " ").trim();
     }

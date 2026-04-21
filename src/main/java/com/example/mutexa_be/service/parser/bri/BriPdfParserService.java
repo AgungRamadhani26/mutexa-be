@@ -36,7 +36,9 @@ public class BriPdfParserService implements PdfParserService {
    private final TransactionRefinementService transactionRefinementService;
 
    @Override
-   public String getBankName() { return "BRI"; }
+   public String getBankName() {
+      return "BRI";
+   }
 
    // Regex untuk mendeteksi baris tabel yang dimulai dengan Tanggal & Jam (contoh:
    // 01/12/25 09:29:59)
@@ -251,12 +253,16 @@ public class BriPdfParserService implements PdfParserService {
 
       // NORMALISASI MENGGUNAKAN SERVICE BARU
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
-      String cpName = transactionRefinementService.extractCounterpartyName("BRI", builder.rawDescription, finalType == MutationType.CR);
-      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalAmount, finalType == MutationType.CR);
+      String cpName = transactionRefinementService.extractCounterpartyName("BRI", builder.rawDescription,
+            finalType == MutationType.CR);
+      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc,
+            finalAmount, finalType == MutationType.CR);
 
       // Base string pembentuk Hash anti duplikasi
-      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
-      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda
+      // tidak tabrakan
+      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_"
+            + finalAmount.toPlainString() + "_" + normalizedDesc;
 
       // Ambil urutan ke-berapa transaksi dengan hash persis sama ini muncul di
       // dokumen ini
@@ -280,9 +286,9 @@ public class BriPdfParserService implements PdfParserService {
             .amount(finalAmount)
             .balance(valSaldo)
             .category(finalCategory) // Diset otomatis berdasarkan rule engine
-            .isExcluded(finalCategory == TransactionCategory.ADMIN || 
-                        finalCategory == TransactionCategory.TAX || 
-                        finalCategory == TransactionCategory.INTEREST)
+            .isExcluded(finalCategory == TransactionCategory.ADMIN ||
+                  finalCategory == TransactionCategory.TAX ||
+                  finalCategory == TransactionCategory.INTEREST)
             .duplicateHash(finalHash)
             .build();
    }

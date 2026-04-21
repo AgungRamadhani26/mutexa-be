@@ -35,7 +35,9 @@ public class UobPdfParserService implements PdfParserService {
    private final TransactionRefinementService transactionRefinementService;
 
    @Override
-   public String getBankName() { return "UOB"; }
+   public String getBankName() {
+      return "UOB";
+   }
 
    // 1. Deteksi Statement Date (Awal Transaksi) - contoh: "03/11/2025"
    // Hanya tanggal tok, karena waktu transaksinya numpang di baris bawahnya
@@ -217,11 +219,15 @@ public class UobPdfParserService implements PdfParserService {
       }
 
       String normalizedDesc = transactionRefinementService.normalizeDescription(builder.rawDescription);
-      String cpName = transactionRefinementService.extractCounterpartyName("UOB", builder.rawDescription, finalType == MutationType.CR);
-      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc, finalAmount, finalType == MutationType.CR);
+      String cpName = transactionRefinementService.extractCounterpartyName("UOB", builder.rawDescription,
+            finalType == MutationType.CR);
+      TransactionCategory finalCategory = transactionRefinementService.categorizeTransaction(normalizedDesc,
+            finalAmount, finalType == MutationType.CR);
 
-      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda tidak tabrakan
-      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_" + finalAmount.toPlainString() + "_" + normalizedDesc;
+      // Scoped Hash: Masukkan ID Rekening agar transaksi identik di rekening berbeda
+      // tidak tabrakan
+      String baseHashStr = doc.getBankAccount().getId() + "_" + builder.dateStr.toString() + "_"
+            + finalAmount.toPlainString() + "_" + normalizedDesc;
       int occurrenceIndex = hashCounters.getOrDefault(baseHashStr, 0);
       hashCounters.put(baseHashStr, occurrenceIndex + 1);
 
@@ -239,9 +245,9 @@ public class UobPdfParserService implements PdfParserService {
             .amount(finalAmount)
             .balance(valSaldo)
             .category(finalCategory)
-            .isExcluded(finalCategory == TransactionCategory.ADMIN || 
-                        finalCategory == TransactionCategory.TAX || 
-                        finalCategory == TransactionCategory.INTEREST)
+            .isExcluded(finalCategory == TransactionCategory.ADMIN ||
+                  finalCategory == TransactionCategory.TAX ||
+                  finalCategory == TransactionCategory.INTEREST)
             .duplicateHash(finalHash)
             .build();
    }
