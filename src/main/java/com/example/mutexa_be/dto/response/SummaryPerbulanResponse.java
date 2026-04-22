@@ -16,6 +16,10 @@ public class SummaryPerbulanResponse {
    private BigDecimal saldoAkhir;
    private BigDecimal totalCredit;
    private BigDecimal totalDebit;
+   private BigDecimal cleanedTotalCredit;
+   private BigDecimal cleanedTotalDebit;
    private Long freqCredit;
    private Long freqDebit;
+   private Long cleanedFreqCredit;
+   private Long cleanedFreqDebit;
 }

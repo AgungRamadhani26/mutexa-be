@@ -37,6 +37,10 @@ public class DashboardService {
          Long freqCredit = row[4] != null ? ((Number) row[4]).longValue() : 0L;
          Long freqDebit = row[5] != null ? ((Number) row[5]).longValue() : 0L;
          BigDecimal saldoAkhir = row[6] != null ? new BigDecimal(row[6].toString()) : BigDecimal.ZERO;
+         BigDecimal cleanedTotalCredit = row[7] != null ? new BigDecimal(row[7].toString()) : BigDecimal.ZERO;
+         BigDecimal cleanedTotalDebit = row[8] != null ? new BigDecimal(row[8].toString()) : BigDecimal.ZERO;
+         Long cleanedFreqCredit = row[9] != null ? ((Number) row[9]).longValue() : 0L;
+         Long cleanedFreqDebit = row[10] != null ? ((Number) row[10]).longValue() : 0L;
 
          String monthName = Month.of(month).getDisplayName(TextStyle.FULL, new Locale("id", "ID"));
          String periode = monthName + " " + year;
@@ -45,8 +49,12 @@ public class DashboardService {
                .periode(periode)
                .totalCredit(totalCredit)
                .totalDebit(totalDebit)
+               .cleanedTotalCredit(cleanedTotalCredit)
+               .cleanedTotalDebit(cleanedTotalDebit)
                .freqCredit(freqCredit)
                .freqDebit(freqDebit)
+               .cleanedFreqCredit(cleanedFreqCredit)
+               .cleanedFreqDebit(cleanedFreqDebit)
                .saldoAkhir(saldoAkhir)
                .build();
       }).collect(Collectors.toList());
