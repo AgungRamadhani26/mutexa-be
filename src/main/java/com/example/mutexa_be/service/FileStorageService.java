@@ -33,74 +33,60 @@ import java.nio.file.Paths;
 @Service
 public class FileStorageService {
 
-   // Lokasi folder sementara tempat menyimpan file user di disk
-   private static final String UPLOAD_DIR = "uploads/";
+    // Lokasi folder sementara tempat menyimpan file user di disk
+    private static final String UPLOAD_DIR = "uploads/";
 
-   /**
-    * Menyimpan file yang diupload pengguna ke folder uploads/ dengan nama unik.
-    *
-    * @param file MultipartFile dari request upload
-    * @return Path absolut file yang tersimpan di disk
-    * @throws IOException jika gagal menyimpan file
-    */
-   public Path saveFile(MultipartFile file) throws IOException {
-      Path uploadPath = Paths.get(UPLOAD_DIR);
-      if (!Files.exists(uploadPath)) {
-         Files.createDirectories(uploadPath);
-      }
+    /**
+     * Menyimpan file yang diupload pengguna ke folder uploads/ dengan nama unik.
+     *
+     * @param file MultipartFile dari request upload
+     * @return Path absolut file yang tersimpan di disk
+     * @throws IOException jika gagal menyimpan file
+     */
+    public Path saveFile(MultipartFile file) throws IOException {
+        Path uploadPath = Paths.get(UPLOAD_DIR);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
 
-      // Tambahkan timestamp agar nama file unik dan tidak bentrok
-      String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-      Path filePath = uploadPath.resolve(uniqueFileName);
-      Files.copy(file.getInputStream(), filePath);
+        // Tambahkan timestamp agar nama file unik dan tidak bentrok
+        String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        Path filePath = uploadPath.resolve(uniqueFileName);
+        Files.copy(file.getInputStream(), filePath);
 
-      log.info("File berhasil disimpan ke: {}", filePath);
-      return filePath;
-   }
+        log.info("File berhasil disimpan ke: {}", filePath);
+        return filePath;
+    }
 
-   /**
-    * Mendeteksi tipe dokumen berdasarkan konten file.
-    *
-    * Logika deteksi:
-    * - File gambar (jpg, png, dll) → IMAGE_SCAN
-    * - File PDF yang mengandung teks → PDF_DIGITAL (mutasi bank digital)
-    * - File PDF tanpa teks → IMAGE_SCAN (kemungkinan hasil scan/foto)
-    *
-    * @param savedFile    File yang sudah tersimpan di disk
-    * @param contentType  MIME type dari file (contoh: "application/pdf",
-    *                     "image/png")
-    * @param originalName Nama asli file sebelum disimpan
-    * @return Tipe dokumen yang terdeteksi
-    */
-   public DocumentType detectType(File savedFile, String contentType, String originalName) {
-      // Jika file gambar langsung → pasti IMAGE_SCAN
-      if (contentType != null && (contentType.startsWith("image/")
-            || originalName.toLowerCase().endsWith(".jpg")
-            || originalName.toLowerCase().endsWith(".png"))) {
-         return DocumentType.IMAGE_SCAN;
-      }
+    /**
+     * Mendeteksi tipe dokumen berdasarkan konten file.
+     * Hanya mendukung PDF asli (Digital) yang mengandung teks.
+     *
+     * @param savedFile    File yang sudah tersimpan di disk
+     * @param contentType  MIME type dari file
+     * @param originalName Nama asli file
+     * @return PDF_DIGITAL jika valid, atau null jika tidak didukung
+     */
+    public DocumentType detectType(File savedFile, String contentType, String originalName) {
+        // Jika bukan PDF, langsung tidak didukung
+        if (originalName == null || !originalName.toLowerCase().endsWith(".pdf")) {
+            return null;
+        }
 
-      // Jika file PDF → cek apakah ada teks di halaman pertama
-      if (originalName != null && originalName.toLowerCase().endsWith(".pdf")) {
-         try (PDDocument document = Loader.loadPDF(savedFile)) {
+        // Cek konten PDF: Harus memiliki teks (bukan hasil scan)
+        try (PDDocument document = Loader.loadPDF(savedFile)) {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setStartPage(1);
             stripper.setEndPage(1);
             String text = stripper.getText(document);
 
-            if (text == null || text.trim().isEmpty()) {
-               // PDF tanpa teks → kemungkinan hasil scan
-               return DocumentType.IMAGE_SCAN;
-            } else {
-               return DocumentType.PDF_DIGITAL;
+            if (text != null && !text.trim().isEmpty()) {
+                return DocumentType.PDF_DIGITAL;
             }
-         } catch (Exception e) {
-            log.warn("Tidak dapat mengekstrak teks awal PDF, dianggap sebagai IMAGE_SCAN", e);
-            return DocumentType.IMAGE_SCAN;
-         }
-      }
+        } catch (Exception e) {
+            log.warn("Gagal menganalisis konten PDF: {}", e.getMessage());
+        }
 
-      // Default fallback untuk tipe file lainnya
-      return DocumentType.IMAGE_SCAN;
-   }
+        return null; // Tidak mengandung teks atau bukan PDF
+    }
 }

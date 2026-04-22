@@ -25,12 +25,14 @@ import com.example.mutexa_be.dto.response.AccountWithDocumentsResponse;
 import com.example.mutexa_be.dto.response.DocumentListResponse;
 
 /**
- * Service Utama (Orchestrator) untuk mengelola proses upload dan pemrosesan dokumen mutasi.
+ * Service Utama (Orchestrator) untuk mengelola proses upload dan pemrosesan
+ * dokumen mutasi.
  *
  * Prinsip SOLID yang diterapkan:
- * - SRP: Class ini HANYA mengatur alur (orchestration), bukan mengerjakan sendiri.
- *        Parsing → ParserRouterService, File I/O → FileStorageService,
- *        Kategorisasi → CategorizationService, Anomali → AnomalyDetectionService.
+ * - SRP: Class ini HANYA mengatur alur (orchestration), bukan mengerjakan
+ * sendiri.
+ * Parsing → ParserRouterService, File I/O → FileStorageService,
+ * Kategorisasi → CategorizationService, Anomali → AnomalyDetectionService.
  * - OCP: Menambah bank baru TIDAK perlu mengubah class ini sama sekali.
  * - DIP: Depend pada abstraksi (interface) bukan concrete implementation.
  *
@@ -48,16 +50,18 @@ import com.example.mutexa_be.dto.response.DocumentListResponse;
 @RequiredArgsConstructor
 public class DocumentService {
 
-   // --- DEPENDENCY INJECTION (semua via constructor injection oleh Lombok @RequiredArgsConstructor) ---
+   // --- DEPENDENCY INJECTION (semua via constructor injection oleh Lombok
+   // @RequiredArgsConstructor) ---
    private final MutationDocumentRepository mutationDocumentRepository;
    private final BankAccountRepository bankAccountRepository;
    private final BankTransactionRepository bankTransactionRepository;
 
-   // Service-service yang menerapkan prinsip SRP (masing-masing punya 1 tanggung jawab)
-   private final FileStorageService fileStorageService;           // SRP: File I/O + deteksi tipe
-   private final ParserRouterService parserRouterService;         // SRP: Routing parser bank
+   // Service-service yang menerapkan prinsip SRP (masing-masing punya 1 tanggung
+   // jawab)
+   private final FileStorageService fileStorageService; // SRP: File I/O + deteksi tipe
+   private final ParserRouterService parserRouterService; // SRP: Routing parser bank
    private final TransactionRefinementService transactionRefinementService;
-   private final CategorizationService categorizationService;     // SRP: Klasifikasi transaksi
+   private final CategorizationService categorizationService; // SRP: Klasifikasi transaksi
    private final AnomalyDetectionService anomalyDetectionService; // SRP: Deteksi anomali
 
    // ==========================================
@@ -84,16 +88,15 @@ public class DocumentService {
    public List<DocumentListResponse> getDocumentsByAccountId(Long accountId) {
       List<MutationDocument> docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
       return docs.stream().map(d -> DocumentListResponse.builder()
-              .id(d.getId())
-              .fileName(d.getFileName())
-              .fileType(d.getFileType() != null ? d.getFileType().name() : null)
-              .status(d.getStatus() != null ? d.getStatus().name() : null)
-              .errorMessage(d.getErrorMessage())
-              .periodStart(d.getPeriodStart())
-              .periodEnd(d.getPeriodEnd())
-              .createdAt(d.getCreatedAt())
-              .build()
-      ).collect(Collectors.toList());
+            .id(d.getId())
+            .fileName(d.getFileName())
+            .fileType(d.getFileType() != null ? d.getFileType().name() : null)
+            .status(d.getStatus() != null ? d.getStatus().name() : null)
+            .errorMessage(d.getErrorMessage())
+            .periodStart(d.getPeriodStart())
+            .periodEnd(d.getPeriodEnd())
+            .createdAt(d.getCreatedAt())
+            .build()).collect(Collectors.toList());
    }
 
    // ==========================================
@@ -102,7 +105,8 @@ public class DocumentService {
 
    /**
     * Mengkoordinasikan seluruh proses upload dan pemrosesan dokumen mutasi.
-    * Method ini adalah orchestrator yang mendelegasikan pekerjaan ke service spesifik.
+    * Method ini adalah orchestrator yang mendelegasikan pekerjaan ke service
+    * spesifik.
     *
     * @param request DTO berisi file, nomor rekening, nama bank, dll
     * @return Entity MutationDocument yang sudah tersimpan (status SUCCESS/FAILED)
@@ -140,8 +144,9 @@ public class DocumentService {
          // 5. Proses parsing sesuai tipe dokumen
          if (detectedType == DocumentType.PDF_DIGITAL) {
             processPdfDigital(document, request.getBankName().toUpperCase(), filePath.toString());
-         } else if (detectedType == DocumentType.IMAGE_SCAN) {
-            processImageScan(document, request.getBankName(), filePath.toString());
+         } else {
+            throw new IllegalArgumentException(
+                  "Sistem hanya mendukung file Mutasi PDF Asli (Digital). File scan atau gambar tidak dapat diproses.");
          }
 
          return document;
@@ -187,9 +192,9 @@ public class DocumentService {
          List<BankTransaction> txToSave = filterDuplicatesAndUpdatePeriod(extractedTxs, document);
 
          // Pipeline pemrosesan transaksi (masing-masing service punya SRP tersendiri)
-         categorizationService.enrichUnclassified(txToSave);        // Step 1: Klasifikasi
-         anomalyDetectionService.detectAnomalies(txToSave);          // Step 2: Deteksi anomali
-         bankTransactionRepository.saveAll(txToSave);                // Step 3: Simpan
+         categorizationService.enrichUnclassified(txToSave); // Step 1: Klasifikasi
+         anomalyDetectionService.detectAnomalies(txToSave); // Step 2: Deteksi anomali
+         bankTransactionRepository.saveAll(txToSave); // Step 3: Simpan
 
          document.setStatus(DocumentStatus.SUCCESS);
          mutationDocumentRepository.save(document);
@@ -208,13 +213,6 @@ public class DocumentService {
          document.setErrorMessage(e.getMessage());
          mutationDocumentRepository.save(document);
       }
-   }
-
-   private void processImageScan(MutationDocument document, String bankName, String filePath) {
-      log.warn("Mode OCR/Image Scan sudah tidak didukung. Mutexa saat ini hanya mendukung file asli (Native PDF).");
-      document.setStatus(DocumentStatus.FAILED);
-      document.setErrorMessage("Sistem mutasi saat ini hanya bisa memproses konversi file Mutasi PDF Asli (Native), bukan file scan atau foto.");
-      mutationDocumentRepository.save(document);
    }
 
    /**
@@ -249,8 +247,10 @@ public class DocumentService {
       }
 
       // Update periode dokumen berdasarkan range tanggal transaksi
-      if (minDate != null) document.setPeriodStart(minDate);
-      if (maxDate != null) document.setPeriodEnd(maxDate);
+      if (minDate != null)
+         document.setPeriodStart(minDate);
+      if (maxDate != null)
+         document.setPeriodEnd(maxDate);
 
       log.info("Filter duplikasi: {} disimpan, {} diabaikan", txToSave.size(), duplicateCount);
       return txToSave;
