@@ -132,4 +132,18 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
                   "FROM bank_transaction t " +
                   "WHERE t.document_id = :documentId", nativeQuery = true)
       List<Object[]> getRingkasanSaldoByDocumentId(Long documentId);
+
+      // Get Top 10 Credit Amount (Cleaned/Window Dressing)
+      @Query(value = "SELECT TOP 10 * FROM bank_transaction t " +
+                  "WHERE t.document_id = :documentId AND t.mutation_type = 'CR' " +
+                  "AND (t.is_excluded = 0 OR t.is_excluded IS NULL) " +
+                  "ORDER BY t.amount DESC", nativeQuery = true)
+      List<BankTransaction> findTop10CreditAmountCleaned(Long documentId);
+
+      // Get Top 10 Debit Amount (Cleaned/Window Dressing)
+      @Query(value = "SELECT TOP 10 * FROM bank_transaction t " +
+                  "WHERE t.document_id = :documentId AND t.mutation_type = 'DB' " +
+                  "AND (t.is_excluded = 0 OR t.is_excluded IS NULL) " +
+                  "ORDER BY t.amount DESC", nativeQuery = true)
+      List<BankTransaction> findTop10DebitAmountCleaned(Long documentId);
 }

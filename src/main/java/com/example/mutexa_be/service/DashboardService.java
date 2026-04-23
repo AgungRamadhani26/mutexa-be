@@ -172,7 +172,7 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .category(tx.getCategory().name())
             .build()).collect(Collectors.toList());
    }
 
@@ -186,7 +186,7 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .category(tx.getCategory().name())
             .build()).collect(Collectors.toList());
    }
 
@@ -200,13 +200,39 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .category(tx.getCategory().name())
             .build()).collect(Collectors.toList());
    }
 
    public List<DetailTransaksiResponse> getTop10DebitAmount(Long documentId) {
       List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
             documentId, com.example.mutexa_be.entity.enums.MutationType.DB);
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory().name())
+            .build()).collect(Collectors.toList());
+   }
+
+   public List<DetailTransaksiResponse> getTop10CreditAmountCleaned(Long documentId) {
+      List<BankTransaction> transactions = bankTransactionRepository.findTop10CreditAmountCleaned(documentId);
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory().name())
+            .build()).collect(Collectors.toList());
+   }
+
+   public List<DetailTransaksiResponse> getTop10DebitAmountCleaned(Long documentId) {
+      List<BankTransaction> transactions = bankTransactionRepository.findTop10DebitAmountCleaned(documentId);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)

@@ -123,6 +123,20 @@ public class DashboardController {
       return ResponseUtil.ok(data, "Berhasil mengambil data top 10 debit.");
    }
 
+   @GetMapping("/top10-credit-cleaned")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getTop10CreditAmountCleaned(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTop10CreditAmountCleaned(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data top 10 credit cleaned.");
+   }
+
+   @GetMapping("/top10-debit-cleaned")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getTop10DebitAmountCleaned(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getTop10DebitAmountCleaned(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data top 10 debit cleaned.");
+   }
+
    /**
     * Endpoint untuk Top 10 Credit Frequency.
     * 
