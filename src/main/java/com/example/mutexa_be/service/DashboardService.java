@@ -272,6 +272,22 @@ public class DashboardService {
       }).collect(Collectors.toList());
    }
 
+   public List<TopFreqResponse> getTop10CreditFreqCleaned(Long documentId) {
+      List<Object[]> rawFreqData = bankTransactionRepository.findTop10CreditFreqCleaned(documentId);
+      return rawFreqData.stream().map(row -> TopFreqResponse.builder()
+              .keterangan(row[0] != null ? row[0].toString() : "TANPA KETERANGAN")
+              .frekuensi(row[1] != null ? ((Number) row[1]).longValue() : 0L)
+              .build()).collect(Collectors.toList());
+   }
+
+   public List<TopFreqResponse> getTop10DebitFreqCleaned(Long documentId) {
+      List<Object[]> rawFreqData = bankTransactionRepository.findTop10DebitFreqCleaned(documentId);
+      return rawFreqData.stream().map(row -> TopFreqResponse.builder()
+              .keterangan(row[0] != null ? row[0].toString() : "TANPA KETERANGAN")
+              .frekuensi(row[1] != null ? ((Number) row[1]).longValue() : 0L)
+              .build()).collect(Collectors.toList());
+   }
+
    public void toggleExclude(Long transactionId) {
        BankTransaction tx = bankTransactionRepository.findById(transactionId)
                .orElseThrow(() -> new IllegalArgumentException("Transaksi tidak ditemukan"));

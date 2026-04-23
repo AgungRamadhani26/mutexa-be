@@ -161,6 +161,20 @@ public class DashboardController {
       return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi debit top 10.");
    }
 
+   @GetMapping("/top10-credit-freq-cleaned")
+   public ResponseEntity<ApiResponse<List<com.example.mutexa_be.dto.response.TopFreqResponse>>> getTop10CreditFreqCleaned(
+         @RequestParam Long documentId) {
+      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService.getTop10CreditFreqCleaned(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi kredit top 10 (cleaned).");
+   }
+
+   @GetMapping("/top10-debit-freq-cleaned")
+   public ResponseEntity<ApiResponse<List<com.example.mutexa_be.dto.response.TopFreqResponse>>> getTop10DebitFreqCleaned(
+         @RequestParam Long documentId) {
+      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService.getTop10DebitFreqCleaned(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi debit top 10 (cleaned).");
+   }
+
    @GetMapping("/export-excel")
    public ResponseEntity<InputStreamResource> downloadExcel(
          @RequestParam Long documentId,

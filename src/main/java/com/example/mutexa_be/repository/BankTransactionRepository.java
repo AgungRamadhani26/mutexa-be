@@ -105,6 +105,19 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
                   "ORDER BY COUNT(t.id) DESC", nativeQuery = true)
       List<Object[]> findTop10CreditFreqByDocumentId(Long documentId);
 
+      @Query(value = "SELECT TOP 10 " +
+                  "    CAST(COALESCE(t.counterparty_name, t.normalized_description, t.raw_description) AS VARCHAR(MAX)) AS keterangan, "
+                  +
+                  "    COUNT(t.id) AS frekuensi " +
+                  "FROM bank_transaction t " +
+                  "WHERE t.document_id = :documentId AND t.mutation_type = 'CR' " +
+                  "AND (t.is_excluded = 0 OR t.is_excluded IS NULL) " +
+                  "GROUP BY CAST(COALESCE(t.counterparty_name, t.normalized_description, t.raw_description) AS VARCHAR(MAX)) "
+                  +
+                  "HAVING COUNT(t.id) >= 2 " +
+                  "ORDER BY COUNT(t.id) DESC", nativeQuery = true)
+      List<Object[]> findTop10CreditFreqCleaned(Long documentId);
+
       // Menghitung jumlah perulangan (frekuensi) terbanyak dari suatu keterangan
       // mutasi (Debit)
       @Query(value = "SELECT TOP 10 " +
@@ -118,6 +131,19 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
                   "HAVING COUNT(t.id) >= 2 " +
                   "ORDER BY COUNT(t.id) DESC", nativeQuery = true)
       List<Object[]> findTop10DebitFreqByDocumentId(Long documentId);
+
+      @Query(value = "SELECT TOP 10 " +
+                  "    CAST(COALESCE(t.counterparty_name, t.normalized_description, t.raw_description) AS VARCHAR(MAX)) AS keterangan, "
+                  +
+                  "    COUNT(t.id) AS frekuensi " +
+                  "FROM bank_transaction t " +
+                  "WHERE t.document_id = :documentId AND t.mutation_type = 'DB' " +
+                  "AND (t.is_excluded = 0 OR t.is_excluded IS NULL) " +
+                  "GROUP BY CAST(COALESCE(t.counterparty_name, t.normalized_description, t.raw_description) AS VARCHAR(MAX)) "
+                  +
+                  "HAVING COUNT(t.id) >= 2 " +
+                  "ORDER BY COUNT(t.id) DESC", nativeQuery = true)
+      List<Object[]> findTop10DebitFreqCleaned(Long documentId);
 
       // Ringkasan Saldo & Arus Kas: total dan rata-rata credit/debit, exclude-aware
       @Query(value = "SELECT " +
