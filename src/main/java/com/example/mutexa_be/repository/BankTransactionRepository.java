@@ -174,6 +174,6 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
       List<BankTransaction> findTop10DebitAmountCleaned(Long documentId);
 
       // Anomaly Credit: transaksi CR yang terdeteksi anomali
-      List<BankTransaction> findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByAmountDesc(
+      List<BankTransaction> findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByTransactionDateAscIdAsc(
                   Long mutationDocumentId, com.example.mutexa_be.entity.enums.MutationType mutationType);
 }

@@ -27,11 +27,11 @@ import java.util.stream.Collectors;
  * keluar (DB) dalam waktu ≤ 48 jam dengan selisih nominal ≤ 5%.
  * Menggunakan dynamic threshold berdasarkan profil turnover nasabah.
  *
- * PILAR 2 — OUTLIER (IQR-Based)
+ * PILAR 2 — OUTLIER (Z-Score Based)
  * Mendeteksi transaksi dengan nominal yang jauh melebihi pola normal
- * nasabah. Menggunakan metode IQR (Interquartile Range) yang robust
- * terhadap distribusi non-normal (skewed), berbeda dari Z-Score yang
- * mengasumsikan distribusi Gaussian.
+ * nasabah menggunakan metode Z-Score (Standar Deviasi). Transaksi yang
+ * memiliki Z-Score > 3.0 (dianggap melampaui batas kewajaran ekstrem)
+ * akan ditandai. Metode ini dinamis dan berskala sesuai volume nasabah.
  * CR dan DB dianalisis TERPISAH karena profil pemasukan vs pengeluaran
  * berbeda secara fundamental.
  *
@@ -236,9 +236,10 @@ public class AnomalyDetectionService {
             BigDecimal tolerance = crAmt.multiply(new BigDecimal("0.05"));
 
             if (diff.compareTo(tolerance) <= 0) {
+               String thresholdStr = threshold.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
                appendAnomalyReason(crTx,
                      "Window Dressing (Dana Masuk Rp " + crAmt.toPlainString()
-                           + " lalu Keluar dalam 48 Jam)");
+                           + " melampaui batas 15% omzet [Rp " + thresholdStr + "] lalu Keluar dlm 48 Jam)");
                appendAnomalyReason(dbTx,
                      "Window Dressing (Dana Ditarik Rp " + dbTx.getAmount().toPlainString()
                            + " setelah Masuk Besar)");
@@ -317,10 +318,11 @@ public class AnomalyDetectionService {
             BigDecimal diff = crAmt.subtract(runningSum).abs();
             if (diff.compareTo(tolerance) <= 0) {
                // MATCH! Flag CR dan semua DB yang terlibat
+               String thresholdStr = threshold.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
                appendAnomalyReason(crTx,
                      "Window Dressing - Split Withdrawal (Dana Masuk Rp " + crAmt.toPlainString()
-                           + " lalu Ditarik Bertahap " + accumulated.size()
-                           + " transaksi dalam 48 Jam)");
+                           + " melampaui batas 15% omzet [Rp " + thresholdStr + "] lalu Ditarik Bertahap " + accumulated.size()
+                           + " kali dlm 48 Jam)");
 
                for (BankTransaction matched : accumulated) {
                   appendAnomalyReason(matched,
@@ -383,11 +385,12 @@ public class AnomalyDetectionService {
          BigDecimal zScore = diff.divide(stdDev, 4, java.math.RoundingMode.HALF_UP);
 
          if (zScore.compareTo(zScoreThreshold) > 0 && tx.getAmount().compareTo(absoluteMinThreshold) >= 0) {
+            String meanStr = mean.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
+            String stdDevStr = stdDev.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
             appendAnomalyReason(tx,
                   "Outlier Transaksi (Z-Score: " + zScore.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
-                        + " melampaui batas " + zScoreThreshold.toPlainString() + " StdDev untuk profil "
-                        + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit")
-                        + " nasabah)");
+                        + " > 3.0 | Rata-rata " + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit")
+                        + " nasabah: Rp " + meanStr + ", StdDev: Rp " + stdDevStr + ")");
          }
       }
    }
