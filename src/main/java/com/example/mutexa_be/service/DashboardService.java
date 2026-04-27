@@ -294,4 +294,25 @@ public class DashboardService {
        tx.setIsExcluded(tx.getIsExcluded() == null ? true : !tx.getIsExcluded());
        bankTransactionRepository.save(tx);
    }
+
+   /**
+    * Mengambil transaksi anomali berdasarkan tipe mutasi (CR atau DB).
+    * Menyertakan anomalyReason agar frontend bisa menampilkan alasan deteksi.
+    */
+   public List<DetailTransaksiResponse> getAnomalyTransactions(Long documentId,
+         com.example.mutexa_be.entity.enums.MutationType mutationType) {
+      List<BankTransaction> transactions = bankTransactionRepository
+            .findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByAmountDesc(documentId, mutationType);
+      return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
+            .jumlah(tx.getAmount())
+            .saldo(tx.getBalance())
+            .isExcluded(tx.getIsExcluded())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
+            .build()).collect(Collectors.toList());
+   }
 }

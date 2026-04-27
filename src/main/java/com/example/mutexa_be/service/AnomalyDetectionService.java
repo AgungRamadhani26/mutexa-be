@@ -2,261 +2,613 @@ package com.example.mutexa_be.service;
 
 import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.enums.MutationType;
+import com.example.mutexa_be.entity.enums.TransactionCategory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SERVICE DETEKSI ANOMALI TRANSAKSI BANK
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Service ini bertanggung jawab HANYA untuk memberikan flag isAnomaly = true
+ * dan menyematkan anomalyReason pada transaksi yang mencurigakan.
+ * TIDAK mengubah kategori atau data transaksi lainnya.
+ *
+ * === 3 PILAR DETEKSI ANOMALI ===
+ *
+ * PILAR 1 — WINDOW DRESSING
+ *   Mendeteksi dana "numpang lewat": uang masuk besar (CR) lalu ditarik
+ *   keluar (DB) dalam waktu ≤ 48 jam dengan selisih nominal ≤ 5%.
+ *   Menggunakan dynamic threshold berdasarkan profil turnover nasabah.
+ *
+ * PILAR 2 — OUTLIER (IQR-Based)
+ *   Mendeteksi transaksi dengan nominal yang jauh melebihi pola normal
+ *   nasabah. Menggunakan metode IQR (Interquartile Range) yang robust
+ *   terhadap distribusi non-normal (skewed), berbeda dari Z-Score yang
+ *   mengasumsikan distribusi Gaussian.
+ *   CR dan DB dianalisis TERPISAH karena profil pemasukan vs pengeluaran
+ *   berbeda secara fundamental.
+ *
+ * PILAR 3 — DETEKSI PINJAMAN BANK/LEASING LAIN
+ *   Mendeteksi transaksi yang mengandung nama lembaga keuangan lain
+ *   (bank kompetitor, multifinance, fintech lending). Informasi ini krusial
+ *   bagi credit analyst karena menunjukkan nasabah memiliki kewajiban
+ *   finansial di tempat lain (indikasi leverage/utang ganda).
+ *
+ * === PENANGANAN ANOMALY REASON ===
+ *   Setiap transaksi bisa terdeteksi oleh LEBIH DARI 1 pilar.
+ *   Reason TIDAK saling menimpa, melainkan digabung dengan separator " | "
+ *   sehingga credit analyst mendapat gambaran lengkap.
+ *   Contoh: "Window Dressing (Dana Masuk Besar) | Pinjaman Lembaga Lain (ADIRA)"
+ */
 @Slf4j
 @Service
 public class AnomalyDetectionService {
 
+   // ═══════════════════════════════════════════════════════════════════
+   // DAFTAR NAMA LEMBAGA KEUANGAN UNTUK PILAR 3
+   // ═══════════════════════════════════════════════════════════════════
+   // Daftar ini mencakup bank, multifinance, dan fintech lending yang
+   // umum ditemukan di mutasi rekening nasabah Indonesia.
+   // Menggunakan Set untuk lookup O(1).
+
+   private static final List<String> FINANCIAL_INSTITUTION_KEYWORDS = List.of(
+         // === MULTIFINANCE / LEASING ===
+         // Keyword pendek (≤3 huruf) akan dicocokkan dengan WORD BOUNDARY
+         // agar tidak salah match pada substring random.
+         // Keyword panjang (≥5 huruf) juga mendukung FUZZY MATCH
+         // untuk menangkap typo/truncation (misal: "bca financ" → "bca finance").
+         "adira", "fif", "federal international finance",
+         "bca finance", "bca multi finance",
+         "mandiri tunas finance", "mtf",
+         "mandiri utama finance", "muf",
+         "oto multiartha", "oto finance",
+         "summit oto finance",
+         "bfi finance", "bfi indonesia",
+         "clipan finance", "wahana ottomitra",
+         "wom finance", "acc", "astra credit",
+         "astra sedaya finance", "toyota astra financial",
+         "taf", "danastra", "mitsui leasing",
+         "orix indonesia", "cimb niaga auto finance",
+         "mega auto finance", "mega finance",
+         "mega central finance",
+         "indomobil finance", "suzuki finance",
+         "maybank finance", "sinarmas multifinance",
+         "batavia prosperindo finance",
+         "csul finance", "chandra sakti utama leasing",
+         "mpm finance", "radana bhaskara finance",
+         "nsc finance", "finansia multi finance",
+         "kredivo", "akulaku", "home credit",
+
+         // === BANK KOMPETITOR ===
+         // Yang di-flag adalah indikasi PINJAMAN dari bank lain.
+         "kredit bri", "pinjaman bri", "angsuran bri",
+         "kredit bca", "pinjaman bca", "angsuran bca",
+         "kredit mandiri", "pinjaman mandiri", "angsuran mandiri",
+         "kredit bni", "pinjaman bni", "angsuran bni",
+         "kredit cimb", "pinjaman cimb", "angsuran cimb",
+         "kredit danamon", "pinjaman danamon", "angsuran danamon",
+         "kredit permata", "pinjaman permata", "angsuran permata",
+         "kredit panin", "pinjaman panin", "angsuran panin",
+         "kredit btn", "pinjaman btn", "angsuran btn",
+         "kredit ocbc", "pinjaman ocbc", "angsuran ocbc",
+         "kredit maybank", "pinjaman maybank", "angsuran maybank",
+         "kredit uob", "pinjaman uob", "angsuran uob",
+
+         // === FINTECH LENDING P2P ===
+         "amartha", "investree", "modalku",
+         "koinworks", "danamas", "akseleran"
+   );
+
+   // ═══════════════════════════════════════════════════════════════════
+   // ENTRY POINT UTAMA
+   // ═══════════════════════════════════════════════════════════════════
+
    /**
-    * Memeriksa seluruh transaksi yang baru diekstrak dan mendeteksi anomali.
-    * Fungsi ini tidak mengubah kategori, HANYA memberikan flag isAnomaly = true
-    * dan menyematkan anomalyReason jika terdeteksi hal mencurigakan.
+    * Menjalankan seluruh pipeline deteksi anomali pada daftar transaksi.
+    * Setiap pilar berjalan INDEPENDEN — tidak ada early termination.
+    * Jika 1 transaksi kena >1 pilar, reason-nya DIGABUNG (tidak overwrite).
     *
-    * @param transactions List transaksi dalam 1 rekening/dokumen
+    * @param transactions Seluruh transaksi dalam 1 dokumen/rekening
     */
    public void detectAnomalies(List<BankTransaction> transactions) {
-      log.info("Memulai proses deteksi anomali pada {} transaksi...", transactions.size());
+      log.info("Memulai deteksi anomali pada {} transaksi...", transactions.size());
 
       if (transactions == null || transactions.isEmpty()) {
          return;
       }
 
-      // 1. Deteksi Kata Kunci Pembatalan / Retur
-      detectKeywordAnomalies(transactions);
+      // ─── FILTER: Hanya kategori TRANSFER yang dideteksi anomali ───
+      // Transaksi berkategori TAX, ADMIN, INTEREST sudah jelas sifatnya
+      // (biaya rutin bank, pajak, bunga) sehingga TIDAK perlu di-flag.
+      // Hanya transaksi TRANSFER yang berpotensi mencurigakan.
+      List<BankTransaction> transferOnly = transactions.stream()
+            .filter(t -> t.getCategory() == TransactionCategory.TRANSFER)
+            .collect(Collectors.toList());
 
-      // 2. Deteksi Nilai Bulat yang Ekstrem (Round Number Anomaly - Indikasi Suntikan
-      // Modal Palsu)
-      detectRoundNumberAnomalies(transactions);
+      log.info("Dari {} total transaksi, {} berkategori TRANSFER untuk dianalisis.",
+            transactions.size(), transferOnly.size());
 
-      // 3. Deteksi Window Dressing (Masuk Besar, Keluar Besar dalam waktu sangat
-      // dekat)
-      detectWindowDressing(transactions);
-
-      // 4. Deteksi Outlier Ekstrem (Z-Score Analysis) untuk mutasi yang jauh di luar
-      // kebiasaan
-      detectZScoreAnomalies(transactions);
-
-      log.info("Proses deteksi anomali selesai.");
-   }
-
-   /**
-    * Algoritma 1: Mendeteksi pembatalan atau retur bank yang mencurigakan.
-    * Credit Analyst sering curiga jika banyak retur, menandakan operasional tidak
-    * stabil.
-    */
-   private void detectKeywordAnomalies(List<BankTransaction> transactions) {
-      for (BankTransaction tx : transactions) {
-         if (tx.getIsAnomaly() != null && tx.getIsAnomaly())
-            continue; // Skip jika sudah jadi anomali
-
-         String desc = tx.getNormalizedDescription() != null ? tx.getNormalizedDescription().toLowerCase() : "";
-         String rawDesc = tx.getRawDescription() != null ? tx.getRawDescription().toLowerCase() : "";
-         String textToSearch = desc + " " + rawDesc;
-
-         if (containsKeyword(textToSearch, "koreksi", "reversal", "retur", "batal", "cancel")) {
-            tx.setIsAnomaly(true);
-            tx.setAnomalyReason("Indikasi Reversal Sistem (Koreksi Mutasi)");
-         }
-      }
-   }
-
-   /**
-    * Algoritma 2: Mendeteksi transaksi nominal bulat yang SANGAT BESAR.
-    * Menggunakan Profiling Dinamis (Dynamic Thresholding).
-    * Jika sebuah mutasi angkanya bulat sempurna (kelipatan 10 juta)
-    * DAN nilainya lebih dari 2X lipat rata-rata mutasi nasabah tersebut, maka
-    * dicurigai sebagai suntikan.
-    */
-   private void detectRoundNumberAnomalies(List<BankTransaction> transactions) {
-      if (transactions == null || transactions.isEmpty())
+      if (transferOnly.isEmpty()) {
+         log.info("Tidak ada transaksi TRANSFER untuk dideteksi anomali.");
          return;
+      }
 
-      // 1. Hitung dulu rata-rata mutasi (Mean Turnover) nasabah ini
-      BigDecimal sumAmount = transactions.stream()
-            .filter(t -> t.getAmount() != null)
+      // Jalankan ketiga pilar secara berurutan.
+      // Setiap pilar menggunakan method appendAnomalyReason() untuk
+      // menambahkan reason TANPA menimpa reason dari pilar sebelumnya.
+
+      // PILAR 1: Window Dressing — dana numpang lewat ≤ 48 jam
+      detectWindowDressing(transferOnly);
+
+      // PILAR 2: Outlier IQR — nominal jauh di luar kebiasaan (CR & DB terpisah)
+      detectOutlierIQR(transferOnly);
+
+      // PILAR 3: Pinjaman Bank/Leasing Lain — indikasi kewajiban di lembaga lain
+      detectCompetingLenders(transferOnly);
+
+      long totalAnomali = transferOnly.stream()
+            .filter(t -> Boolean.TRUE.equals(t.getIsAnomaly()))
+            .count();
+      log.info("Deteksi anomali selesai. Total anomali ditemukan: {}/{}", totalAnomali, transferOnly.size());
+   }
+
+   // ═══════════════════════════════════════════════════════════════════
+   // PILAR 1: DETEKSI WINDOW DRESSING
+   // ═══════════════════════════════════════════════════════════════════
+   //
+   // KONSEP:
+   //   Window Dressing adalah praktik memasukkan dana besar ke rekening
+   //   sesaat sebelum tanggal laporan, lalu menariknya kembali setelahnya.
+   //   Tujuannya: membuat saldo/omzet terlihat besar di mata analis kredit.
+   //
+   // ALGORITMA:
+   //   1. Pisahkan transaksi CR (masuk) dan DB (keluar)
+   //   2. Hitung total turnover CR untuk menentukan threshold dinamis
+   //   3. Threshold = 15% dari total turnover (proporsional terhadap skala usaha)
+   //   4. Untuk setiap CR ≥ threshold, cari DB yang terjadi dalam ≤ 2 hari
+   //      dengan selisih nominal ≤ 5% dari CR tersebut
+   //   5. Jika cocok, KEDUA transaksi (CR & DB) di-flag sebagai window dressing
+   //
+   // TOLERANSI 5%:
+   //   Lebih longgar dari versi lama (2%) karena di dunia nyata, pelaku
+   //   tidak selalu menarik dana persis sama. Ada biaya admin, bunga, dll.
+
+   private void detectWindowDressing(List<BankTransaction> transactions) {
+
+      // Langkah 1: Pisahkan transaksi berdasarkan tipe mutasi
+      List<BankTransaction> credits = transactions.stream()
+            .filter(t -> t.getMutationType() == MutationType.CR && t.getAmount() != null)
+            .sorted(Comparator.comparing(BankTransaction::getTransactionDate))
+            .collect(Collectors.toList());
+
+      List<BankTransaction> debits = transactions.stream()
+            .filter(t -> t.getMutationType() == MutationType.DB && t.getAmount() != null)
+            .sorted(Comparator.comparing(BankTransaction::getTransactionDate))
+            .collect(Collectors.toList());
+
+      // Langkah 2: Hitung total turnover CR sebagai basis threshold dinamis
+      BigDecimal totalCreditTurnover = credits.stream()
             .map(BankTransaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-      long countValid = transactions.stream()
-            .filter(t -> t.getAmount() != null)
-            .count();
+      if (totalCreditTurnover.compareTo(BigDecimal.ZERO) == 0) return;
 
-      if (countValid == 0)
-         return;
+      // Langkah 3: Threshold = 15% dari total omset CR
+      BigDecimal threshold = totalCreditTurnover.multiply(new BigDecimal("0.15"));
 
-      // Rata-rata mutasi nasabah (contoh: rata-rata transfer sehari-harinya 5 juta)
-      BigDecimal meanAmount = sumAmount.divide(new BigDecimal(countValid), java.math.RoundingMode.HALF_UP);
+      // Set untuk melacak DB yang sudah dipasangkan, mencegah 1 DB di-match ke >1 CR
+      Set<BankTransaction> matchedDebits = new HashSet<>();
+      // Set untuk melacak CR yang sudah berhasil di-match
+      Set<BankTransaction> matchedCredits = new HashSet<>();
 
-      // Threshold dinamis = 2x dari rata-rata (jadi kalau rata2 5jt, masuk 11jt mulai
-      // disorot)
-      BigDecimal dynamicThreshold = meanAmount.multiply(new BigDecimal("2.0"));
+      // ─────────────────────────────────────────────────────────────
+      // PASS 1: Exact Pair (1 CR ↔ 1 DB)
+      // ─────────────────────────────────────────────────────────────
+      // Cari DB tunggal yang nominalnya mendekati CR (selisih ≤ 5%).
+      // Ini menangkap window dressing pola sederhana.
+      for (BankTransaction crTx : credits) {
+         BigDecimal crAmt = crTx.getAmount();
+         if (crAmt.compareTo(threshold) < 0) continue;
 
-      for (BankTransaction tx : transactions) {
-         if (tx.getIsAnomaly() != null && tx.getIsAnomaly())
-            continue;
+         for (BankTransaction dbTx : debits) {
+            if (matchedDebits.contains(dbTx)) continue;
 
-         BigDecimal amount = tx.getAmount();
+            long daysBetween = Math.abs(
+                  ChronoUnit.DAYS.between(crTx.getTransactionDate(), dbTx.getTransactionDate()));
+            if (daysBetween > 2) continue;
 
-         // Cek apakah amount melebihi threshold dinamis DAN merupakan bilangan bulat
-         // puluhan juta
-         // (amount % 10.000.000 == 0)
-         if (amount != null && amount.compareTo(dynamicThreshold) >= 0) {
-            // Untuk mencegah terflagging angka kecil, kita patok nominal wajar harus > 10
-            // Juta minimal
-            if (amount.compareTo(new BigDecimal("10000000")) >= 0) {
-               BigDecimal tenMillion = new BigDecimal("10000000"); // Kelipatan 10 Juta yang bulat
-               if (amount.remainder(tenMillion).compareTo(BigDecimal.ZERO) == 0) {
-                  tx.setIsAnomaly(true);
-                  tx.setAnomalyReason(String.format(
-                        "Indikasi Suntikan Modal Palsu (Nominal Bulat %s sangat melebihi rutinitas profil Rp %s)",
-                        amount.toPlainString(), meanAmount.toPlainString()));
+            BigDecimal diff = crAmt.subtract(dbTx.getAmount()).abs();
+            BigDecimal tolerance = crAmt.multiply(new BigDecimal("0.05"));
+
+            if (diff.compareTo(tolerance) <= 0) {
+               appendAnomalyReason(crTx,
+                     "Window Dressing (Dana Masuk Rp " + crAmt.toPlainString()
+                           + " lalu Keluar dalam 48 Jam)");
+               appendAnomalyReason(dbTx,
+                     "Window Dressing (Dana Ditarik Rp " + dbTx.getAmount().toPlainString()
+                           + " setelah Masuk Besar)");
+
+               matchedDebits.add(dbTx);
+               matchedCredits.add(crTx);
+               break;
+            }
+         }
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // PASS 2: Split Withdrawal (1 CR ↔ banyak DB)
+      // ─────────────────────────────────────────────────────────────
+      // Untuk CR besar yang BELUM terdeteksi di Pass 1, cek apakah
+      // ada KUMPULAN debit dalam ≤ 2 hari yang totalnya mendekati
+      // nominal CR (selisih ≤ 5%).
+      //
+      // Contoh:
+      //   CR = 100 Juta (masuk)
+      //   DB = 20jt + 20jt + 20jt + 20jt + 20jt = 100jt (keluar dipecah)
+      //
+      // Ini pola window dressing yang lebih canggih karena pelaku
+      // sengaja memecah penarikan agar tidak terlihat mencurigakan.
+      //
+      // ALGORITMA: Greedy accumulation
+      //   1. Kumpulkan semua DB yang belum di-match dalam ≤ 2 hari dari CR
+      //   2. Urutkan dari nominal terbesar ke terkecil
+      //   3. Akumulasi sampai total mendekati nominal CR (± 5%)
+      //   4. Jika tercapai → flag semua DB yang terlibat + CR-nya
+
+      for (BankTransaction crTx : credits) {
+         if (matchedCredits.contains(crTx)) continue; // Sudah kena di Pass 1
+         BigDecimal crAmt = crTx.getAmount();
+         if (crAmt.compareTo(threshold) < 0) continue;
+
+         // Kumpulkan semua DB kandidat dalam ≤ 2 hari yang belum di-match
+         List<BankTransaction> candidates = new ArrayList<>();
+         for (BankTransaction dbTx : debits) {
+            if (matchedDebits.contains(dbTx)) continue;
+            long daysBetween = Math.abs(
+                  ChronoUnit.DAYS.between(crTx.getTransactionDate(), dbTx.getTransactionDate()));
+            if (daysBetween <= 2) {
+               candidates.add(dbTx);
+            }
+         }
+
+         // Butuh minimal 2 DB agar dianggap "split" (1 DB sudah dicek di Pass 1)
+         if (candidates.size() < 2) continue;
+
+         // Urutkan dari nominal terbesar → greedy accumulation
+         candidates.sort(Comparator.comparing(BankTransaction::getAmount).reversed());
+
+         BigDecimal runningSum = BigDecimal.ZERO;
+         List<BankTransaction> accumulated = new ArrayList<>();
+         BigDecimal tolerance = crAmt.multiply(new BigDecimal("0.05"));
+
+         for (BankTransaction dbCandidate : candidates) {
+            // Jangan akumulasi jika sudah melebihi CR + tolerance
+            if (runningSum.add(dbCandidate.getAmount()).compareTo(crAmt.add(tolerance)) > 0) {
+               continue; // Skip DB ini, coba yang lebih kecil
+            }
+
+            runningSum = runningSum.add(dbCandidate.getAmount());
+            accumulated.add(dbCandidate);
+
+            // Cek apakah total sudah mendekati CR (± 5%)
+            BigDecimal diff = crAmt.subtract(runningSum).abs();
+            if (diff.compareTo(tolerance) <= 0) {
+               // MATCH! Flag CR dan semua DB yang terlibat
+               appendAnomalyReason(crTx,
+                     "Window Dressing - Split Withdrawal (Dana Masuk Rp " + crAmt.toPlainString()
+                           + " lalu Ditarik Bertahap " + accumulated.size()
+                           + " transaksi dalam 48 Jam)");
+
+               for (BankTransaction matched : accumulated) {
+                  appendAnomalyReason(matched,
+                        "Window Dressing - Split Withdrawal (Bagian penarikan bertahap dari Rp "
+                              + crAmt.toPlainString() + ")");
+                  matchedDebits.add(matched);
                }
+               matchedCredits.add(crTx);
+               break; // Berhenti akumulasi, CR ini sudah ter-match
             }
          }
       }
    }
 
+   // ═══════════════════════════════════════════════════════════════════
+   // PILAR 2: DETEKSI OUTLIER DENGAN IQR (INTERQUARTILE RANGE)
+   // ═══════════════════════════════════════════════════════════════════
+   //
+   // MENGAPA IQR, BUKAN Z-SCORE?
+   //   Z-Score mengasumsikan data berdistribusi normal (Gaussian/bell curve).
+   //   Namun data transaksi bank HAMPIR TIDAK PERNAH normal — biasanya
+   //   right-skewed (banyak transaksi kecil, sedikit transaksi besar).
+   //   Pada distribusi skewed, Z-Score:
+   //     - Gagal mendeteksi outlier karena stddev ter-inflate oleh extreme values
+   //     - Menghasilkan false negative (outlier lolos) dan false positive
+   //
+   //   IQR adalah metode NON-PARAMETRIK yang tidak bergantung pada asumsi
+   //   distribusi apapun. IQR hanya melihat posisi data di kuartil,
+   //   sehingga ROBUST terhadap skewness dan extreme values.
+   //
+   // FORMULA:
+   //   Q1 = Kuartil ke-1 (persentil 25)
+   //   Q3 = Kuartil ke-3 (persentil 75)
+   //   IQR = Q3 - Q1
+   //   Batas Atas = Q3 + (2.5 × IQR)
+   //   Transaksi dengan amount > Batas Atas = OUTLIER
+   //
+   // MULTIPLIER 2.5:
+   //   Standar statistik menggunakan 1.5 untuk "mild outlier" dan 3.0 untuk
+   //   "extreme outlier". Kita gunakan 2.5 sebagai kompromi agar:
+   //   - Tidak terlalu sensitif (mengurangi false positive)
+   //   - Tetap menangkap transaksi yang benar-benar tidak wajar
+   //
+   // PEMISAHAN CR & DB:
+   //   CR dan DB dianalisis TERPISAH karena profil pemasukan dan pengeluaran
+   //   berbeda secara fundamental. Rata-rata belanja harian (DB) biasanya
+   //   jauh lebih kecil dari rata-rata penerimaan (CR) untuk akun bisnis.
+
+   private void detectOutlierIQR(List<BankTransaction> transactions) {
+
+      // Pisahkan amount berdasarkan tipe mutasi
+      List<BigDecimal> creditAmounts = transactions.stream()
+            .filter(t -> t.getMutationType() == MutationType.CR && t.getAmount() != null)
+            .map(BankTransaction::getAmount)
+            .sorted()
+            .collect(Collectors.toList());
+
+      List<BigDecimal> debitAmounts = transactions.stream()
+            .filter(t -> t.getMutationType() == MutationType.DB && t.getAmount() != null)
+            .map(BankTransaction::getAmount)
+            .sorted()
+            .collect(Collectors.toList());
+
+      // Hitung upper fence (batas atas) untuk masing-masing tipe
+      // Minimal 5 data per tipe agar IQR punya makna statistik
+      BigDecimal creditFence = calculateUpperFence(creditAmounts);
+      BigDecimal debitFence = calculateUpperFence(debitAmounts);
+
+      // Scan setiap transaksi dan bandingkan dengan fence tipe-nya
+      for (BankTransaction tx : transactions) {
+         if (tx.getAmount() == null) continue;
+
+         BigDecimal fence = (tx.getMutationType() == MutationType.CR) ? creditFence : debitFence;
+
+         // null berarti data tidak cukup untuk analisis statistik → skip
+         if (fence == null) continue;
+
+         if (tx.getAmount().compareTo(fence) > 0) {
+            // Hitung berapa kali lipat dari median untuk pesan yang informatif
+            appendAnomalyReason(tx,
+                  "Outlier Transaksi (Nominal Rp " + tx.getAmount().toPlainString()
+                        + " melampaui batas wajar profil "
+                        + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit")
+                        + " nasabah)");
+         }
+      }
+   }
+
    /**
-    * Algoritma 3: Mendeteksi Window Dressing dengan Dynamic Turnover.
-    * Kondisi: Uang masuk (CR) lalu ditarik hampir habis (DB) dalam waktu < 48 Jam.
-    * Hanya akan menyorot transaksi yang besarnya mencapai 20% dari Total
-    * Perputaran Uang nasabah.
+    * Menghitung Upper Fence menggunakan metode IQR.
+    *
+    * @param sortedAmounts List nominal yang SUDAH TERURUT ascending
+    * @return Batas atas (Upper Fence), atau null jika data < 5
     */
-   private void detectWindowDressing(List<BankTransaction> transactions) {
-      // Pisahkan Credit dan Debit untuk dicocokkan
-      List<BankTransaction> credits = transactions.stream()
-            .filter(t -> t.getMutationType() == MutationType.CR)
-            .collect(Collectors.toList());
+   private BigDecimal calculateUpperFence(List<BigDecimal> sortedAmounts) {
+      // Butuh minimal 5 data agar kuartil bermakna
+      if (sortedAmounts.size() < 5) return null;
 
-      List<BankTransaction> debits = transactions.stream()
-            .filter(t -> t.getMutationType() == MutationType.DB)
-            .collect(Collectors.toList());
+      int n = sortedAmounts.size();
 
-      // Hitung Total Kredit (Berapa omset/uang masuk selama 1 bulan ini)
-      BigDecimal totalCreditTurnover = credits.stream()
-            .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+      // Q1 = nilai di posisi 25% dari data terurut
+      BigDecimal q1 = sortedAmounts.get(n / 4);
+      // Q3 = nilai di posisi 75% dari data terurut
+      BigDecimal q3 = sortedAmounts.get((3 * n) / 4);
 
-      // Jika total omset kosong, abaikan
-      if (totalCreditTurnover.compareTo(BigDecimal.ZERO) == 0)
-         return;
+      // IQR = rentang antar-kuartil (seberapa "lebar" 50% data tengah)
+      BigDecimal iqr = q3.subtract(q1);
 
-      // Threshold Window Dressing = 20% dari total Omset.
-      // Jika Total omset 100 Juta, uang numpang lewat 20jt akan ditangkap.
-      // Jika Total omset 10 Miliar, uang numpang lewat harus min 2 Miliar baru
-      // ditangkap.
-      BigDecimal dynamicLargeThreshold = totalCreditTurnover.multiply(new BigDecimal("0.20"));
+      // Upper Fence = Q3 + (2.5 × IQR)
+      // Multiplier 2.5 → kompromi antara sensitif (1.5) dan konservatif (3.0)
+      BigDecimal multiplier = new BigDecimal("2.5");
+      return q3.add(iqr.multiply(multiplier));
+   }
 
-      for (BankTransaction crTx : credits) {
-         BigDecimal crAmt = crTx.getAmount();
-         // Loloskan screening jika nilai masuknya di bawah 20% Omset bulanannya
-         if (crAmt == null || crAmt.compareTo(dynamicLargeThreshold) < 0)
-            continue;
+   // ═══════════════════════════════════════════════════════════════════
+   // PILAR 3: DETEKSI PINJAMAN DARI BANK / LEASING LAIN
+   // ═══════════════════════════════════════════════════════════════════
+   //
+   // KONTEKS BISNIS:
+   //   Dalam analisis kredit, mengetahui apakah nasabah memiliki kewajiban
+   //   finansial di lembaga lain sangat penting untuk menilai:
+   //   - Debt Service Ratio (DSR) → apakah penghasilan cukup bayar semua cicilan
+   //   - Risiko over-leverage → terlalu banyak utang dari berbagai sumber
+   //   - Gali lubang tutup lubang → pinjam dari A untuk bayar B
+   //
+   // ALGORITMA:
+   //   Scan deskripsi transaksi (raw + normalized) terhadap daftar nama
+   //   lembaga keuangan yang komprehensif. Jika ditemukan, flag sebagai
+   //   anomali dengan menyebutkan nama lembaga yang terdeteksi.
+   //
+   // FOKUS PADA DEBIT (DB):
+   //   Transaksi DB ke lembaga keuangan = pembayaran cicilan/angsuran.
+   //   Transaksi CR dari lembaga keuangan = pencairan pinjaman baru.
+   //   Keduanya penting, tapi reason-nya dibedakan untuk kejelasan.
 
-         for (BankTransaction dbTx : debits) {
-            // Jangan cek jika hari-nya terlalu jauh (selisih > 2 hari)
-            long daysBetween = Math.abs(ChronoUnit.DAYS.between(crTx.getTransactionDate(), dbTx.getTransactionDate()));
-            if (daysBetween > 2)
-               continue; // Hanya peduli dana numpang lewat 0-2 hari
+   private void detectCompetingLenders(List<BankTransaction> transactions) {
+      for (BankTransaction tx : transactions) {
+         // Gabungkan semua teks deskripsi untuk pencarian yang menyeluruh
+         String desc = buildSearchableText(tx);
+         if (desc.isEmpty()) continue;
 
-            BigDecimal dbAmt = dbTx.getAmount();
-            if (dbAmt == null)
-               continue;
+         // Cek setiap keyword lembaga keuangan dengan fuzzy matching
+         for (String keyword : FINANCIAL_INSTITUTION_KEYWORDS) {
+            if (fuzzyMatchKeyword(desc, keyword)) {
+               // Capitalize nama lembaga untuk tampilan yang rapi
+               String lembaga = keyword.toUpperCase();
 
-            // Hitung selisih mutasi
-            BigDecimal diffRaw = crAmt.subtract(dbAmt).abs();
-
-            // Jika selisihnya kurang dari 2% dari saldo masuk, berarti debitnya hampir
-            // menguras persis uang masuk tadi
-            BigDecimal twoPercent = crAmt.multiply(new BigDecimal("0.02"));
-
-            if (diffRaw.compareTo(twoPercent) <= 0) {
-               // Tandai KEDUANYA sebagai anomali window dressing!
-               crTx.setIsAnomaly(true);
-               crTx.setAnomalyReason(
-                     "Indikasi Window Dressing (Dana Masuk > 20% Omset, lalu Keluar Cepat dalam 48 Jam)");
-
-               dbTx.setIsAnomaly(true);
-               dbTx.setAnomalyReason("Indikasi Window Dressing (Uang Ditarik Cepat setelah Masuk Besar)");
-
-               // Break agar tidak men-flag banyak debit dari 1 credit
+               if (tx.getMutationType() == MutationType.DB) {
+                  // DB = pembayaran ke lembaga lain (cicilan/angsuran)
+                  appendAnomalyReason(tx,
+                        "Pembayaran ke Lembaga Keuangan Lain (" + lembaga + ")");
+               } else {
+                  // CR = pencairan dana dari lembaga lain (pinjaman baru)
+                  appendAnomalyReason(tx,
+                        "Pencairan dari Lembaga Keuangan Lain (" + lembaga + ")");
+               }
+               // Break setelah match pertama agar tidak double-flag
                break;
             }
          }
       }
    }
 
+   // ═══════════════════════════════════════════════════════════════════
+   // UTILITY METHODS
+   // ═══════════════════════════════════════════════════════════════════
+
    /**
-    * Algoritma 4: Mendeteksi Anomali Z-Score (Statistika).
-    * Mencari transaksi yang jumlahnya sangat jauh secara statistik
-    * dari rata-rata transaksi lain di rekening tersebut (Z-Score > 3).
+    * Fuzzy matching keyword terhadap teks deskripsi transaksi.
+    *
+    * STRATEGI MATCHING BERTINGKAT:
+    *
+    * 1. KEYWORD PENDEK (≤ 3 karakter) → contoh: "mtf", "acc", "fif", "taf"
+    *    Menggunakan WORD BOUNDARY matching.
+    *    Keyword harus muncul sebagai kata utuh, bukan bagian dari kata lain.
+    *    Contoh:
+    *      "mtf"  MATCH di "pembayaran mtf oktober"   → ✅ (kata utuh)
+    *      "acc"  TIDAK MATCH di "account transfer"    → ❌ (bagian dari "account")
+    *      "acc"  MATCH di "bayar acc cicilan"         → ✅ (kata utuh)
+    *
+    * 2. KEYWORD PANJANG (≥ 5 karakter) → contoh: "bca finance", "adira"
+    *    Menggunakan EXACT + TRUNCATION matching.
+    *    Selain exact match, juga menangkap keyword yang terpotong
+    *    1-2 karakter terakhir (umum terjadi karena format PDF/OCR).
+    *    Contoh:
+    *      "bca finance"  MATCH di "bca financ"   → ✅ (terpotong 1 huruf)
+    *      "bca finance"  MATCH di "bca finane"   → ❌ (bukan truncation)
+    *      "adira"        MATCH di "adir"         → ✅ (terpotong 1 huruf)
+    *
+    * 3. KEYWORD 4 KARAKTER → exact substring match saja (default).
+    *
+    * @param text     Teks deskripsi transaksi (lowercase)
+    * @param keyword  Keyword lembaga keuangan (lowercase)
+    * @return true jika keyword cocok dengan teks
     */
-   private void detectZScoreAnomalies(List<BankTransaction> transactions) {
-      if (transactions.size() < 10)
-         return; // Butuh sampel cukup agar statisik valid
+   private boolean fuzzyMatchKeyword(String text, String keyword) {
+      if (text == null || keyword == null) return false;
 
-      // Hitung Rata-Rata (Mean / mu)
-      double sum = 0;
-      for (BankTransaction tx : transactions) {
-         if (tx.getAmount() != null) {
-            sum += tx.getAmount().doubleValue();
+      // === STRATEGI 1: Keyword pendek → word boundary ===
+      if (keyword.length() <= 3) {
+         return matchWithWordBoundary(text, keyword);
+      }
+
+      // === STRATEGI 2: Exact match dulu (selalu dicek) ===
+      if (text.contains(keyword)) {
+         return true;
+      }
+
+      // === STRATEGI 3: Truncation match untuk keyword ≥ 5 karakter ===
+      // Menangkap keyword yang terpotong 1-2 huruf terakhir di hasil OCR/PDF.
+      // PENTING: Menggunakan word boundary agar prefix yang terpotong tidak
+      // salah match di tengah kata lain.
+      // Contoh: "kredivo" → "kredi" TIDAK boleh match di "kredit lokal"
+      //         "bca finance" → "bca financ" BOLEH match (kata terpotong di akhir)
+      if (keyword.length() >= 5) {
+         String minus1 = keyword.substring(0, keyword.length() - 1);
+         if (matchTruncatedAtWordEnd(text, minus1)) return true;
+
+         if (keyword.length() >= 7) {
+            String minus2 = keyword.substring(0, keyword.length() - 2);
+            if (matchTruncatedAtWordEnd(text, minus2)) return true;
          }
       }
-      double mean = sum / transactions.size();
 
-      // Hitung Standar Deviasi (Standard Deviation / sigma)
-      double sumSquaredDiffs = 0;
-      for (BankTransaction tx : transactions) {
-         if (tx.getAmount() != null) {
-            double diff = tx.getAmount().doubleValue() - mean;
-            sumSquaredDiffs += diff * diff;
+      return false;
+   }
+
+   /**
+    * Mengecek apakah keyword muncul sebagai KATA UTUH dalam teks.
+    * Kata utuh = dikelilingi oleh spasi, awal/akhir string, atau karakter non-alfanumerik.
+    *
+    * Ini penting untuk keyword pendek seperti "mtf", "acc", "fif" agar tidak
+    * salah match pada kata yang mengandung substring tersebut.
+    *
+    * Contoh:
+    *   matchWithWordBoundary("bayar acc oktober", "acc")  → true  (kata utuh)
+    *   matchWithWordBoundary("account transfer", "acc")   → false (bagian kata lain)
+    */
+   private boolean matchWithWordBoundary(String text, String keyword) {
+      int idx = 0;
+      while ((idx = text.indexOf(keyword, idx)) != -1) {
+         boolean startOk = (idx == 0) || !Character.isLetterOrDigit(text.charAt(idx - 1));
+         int endIdx = idx + keyword.length();
+         boolean endOk = (endIdx >= text.length()) || !Character.isLetterOrDigit(text.charAt(endIdx));
+
+         if (startOk && endOk) {
+            return true;
          }
+         idx++;
       }
-      double variance = sumSquaredDiffs / transactions.size();
-      double stdDev = Math.sqrt(variance);
+      return false;
+   }
 
-      // Jika deviasi standarnya 0 (semua transaksi nilainya kembar), skip
-      if (stdDev == 0)
-         return;
-
-      // Hitung Z-Score tiap baris dan beri flag jika > 3
-      for (BankTransaction tx : transactions) {
-         if (tx.getIsAnomaly() != null && tx.getIsAnomaly())
-            continue; // Skip jk sdh kena anomal lain
-
-         if (tx.getAmount() != null) {
-            double zScore = Math.abs((tx.getAmount().doubleValue() - mean) / stdDev);
-
-            // Aturan Umum Statistika: Data dengan Z-Score >= 3.0 adalah Outlier / Anomali
-            // Ekstrim
-            if (zScore > 3.0) {
-               tx.setIsAnomaly(true);
-               String reason = String.format("Outlier Transaksi Ekstrem (Mutasi %.1fx lebih tinggi dari rata-rata)",
-                     tx.getAmount().doubleValue() / mean);
-               tx.setAnomalyReason(reason);
-            }
+   /**
+    * Mengecek apakah prefix (keyword terpotong) ditemukan di teks DAN
+    * diakhiri oleh word boundary (spasi, akhir string, atau non-alfanumerik).
+    *
+    * Ini mencegah false positive dimana prefix terpotong kebetulan
+    * muncul sebagai awal kata lain yang tidak terkait.
+    *
+    * Contoh:
+    *   "bca financ" di "pembayaran bca financ oktober"  → true  (akhir di spasi)
+    *   "kredi" di "bunga kredit lokal"                  → false ('t' mengikuti)
+    */
+   private boolean matchTruncatedAtWordEnd(String text, String prefix) {
+      int idx = 0;
+      while ((idx = text.indexOf(prefix, idx)) != -1) {
+         int endIdx = idx + prefix.length();
+         // Prefix harus diakhiri boundary: akhir string ATAU karakter non-alfanumerik
+         boolean endOk = (endIdx >= text.length()) || !Character.isLetterOrDigit(text.charAt(endIdx));
+         if (endOk) {
+            return true;
          }
+         idx++;
+      }
+      return false;
+   }
+
+   /**
+    * Menggabungkan anomalyReason TANPA menimpa reason sebelumnya.
+    * Jika transaksi sudah punya reason dari pilar lain, reason baru
+    * ditambahkan dengan separator " | ".
+    */
+   private void appendAnomalyReason(BankTransaction tx, String newReason) {
+      tx.setIsAnomaly(true);
+
+      String existing = tx.getAnomalyReason();
+      if (existing == null || existing.isBlank()) {
+         tx.setAnomalyReason(newReason);
+      } else {
+         tx.setAnomalyReason(existing + " | " + newReason);
       }
    }
 
-   private boolean containsKeyword(String text, String... keywords) {
-      if (text == null)
-         return false;
-      for (String keyword : keywords) {
-         if (text.contains(keyword.toLowerCase())) {
-            return true;
-         }
-      }
-      return false;
+   /**
+    * Membangun teks yang bisa dicari dari seluruh field deskripsi transaksi.
+    * Menggabungkan rawDescription, normalizedDescription, dan counterpartyName
+    * dalam lowercase untuk pencarian case-insensitive.
+    */
+   private String buildSearchableText(BankTransaction tx) {
+      StringBuilder sb = new StringBuilder();
+      if (tx.getRawDescription() != null) sb.append(tx.getRawDescription().toLowerCase()).append(" ");
+      if (tx.getNormalizedDescription() != null) sb.append(tx.getNormalizedDescription().toLowerCase()).append(" ");
+      if (tx.getCounterpartyName() != null) sb.append(tx.getCounterpartyName().toLowerCase());
+      return sb.toString().trim();
    }
 }

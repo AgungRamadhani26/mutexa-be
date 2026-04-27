@@ -216,4 +216,26 @@ public class DashboardController {
       dashboardService.toggleExclude(id);
       return ResponseUtil.ok("Success toggle", "Berhasil mengubah status exclude transaksi.");
    }
+
+   /**
+    * Endpoint untuk mengambil transaksi anomali tipe Credit (CR).
+    */
+   @GetMapping("/anomaly-credit")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getAnomalyCreditTransactions(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getAnomalyTransactions(documentId,
+            com.example.mutexa_be.entity.enums.MutationType.CR);
+      return ResponseUtil.ok(data, "Berhasil mengambil data anomali credit.");
+   }
+
+   /**
+    * Endpoint untuk mengambil transaksi anomali tipe Debit (DB).
+    */
+   @GetMapping("/anomaly-debit")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getAnomalyDebitTransactions(
+         @RequestParam Long documentId) {
+      List<DetailTransaksiResponse> data = dashboardService.getAnomalyTransactions(documentId,
+            com.example.mutexa_be.entity.enums.MutationType.DB);
+      return ResponseUtil.ok(data, "Berhasil mengambil data anomali debit.");
+   }
 }

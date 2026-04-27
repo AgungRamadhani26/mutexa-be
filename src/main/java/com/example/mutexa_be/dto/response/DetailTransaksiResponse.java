@@ -21,4 +21,5 @@ public class DetailTransaksiResponse {
    private BigDecimal saldo;
    private Boolean isExcluded; // Status exclusion
    private String category; // Kategori: ADMIN, TAX, INTEREST, TRANSFER
+   private String anomalyReason; // Alasan anomali (bisa multi-pilar, dipisah " | ")
 }

@@ -32,7 +32,8 @@ public class CategorizationService {
             TransactionCategory categorizedAs = TransactionCategory.TRANSFER; // Default
 
             // 1. SIGNATURE NOMINAL (Prioritas Tertinggi - Konfirmasi Kata Kunci Bank Dasar)
-            // Mengecek nominal dulu agar biaya sistem (seperti "BI FAST") tidak terblokir Veto.
+            // Mengecek nominal dulu agar biaya sistem (seperti "BI FAST") tidak terblokir
+            // Veto.
             if (!isCredit && amount != null) {
                 java.util.function.Predicate<Double> isAmt = (
                         val) -> amount.compareTo(java.math.BigDecimal.valueOf(val)) == 0;
@@ -40,13 +41,15 @@ public class CategorizationService {
                 // Varian penulisan BI-FAST yang umum di PDF: "BI-FAST", "BI FAST", "BIFAST"
                 boolean isBifastKeyword = matchesKeyword(fullText, true, "bi-fast", "bi fast", "bifast", "bi.fast");
                 // Varian biaya bank umum
-                boolean isAdminKeyword = matchesKeyword(fullText, true, "adm", "admin", "biaya", "fee", "pindah", "charge", "mcm");
+                boolean isAdminKeyword = matchesKeyword(fullText, true, "adm", "admin", "biaya", "fee", "pindah",
+                        "charge", "mcm");
 
                 if (isAmt.test(2500.0) && (isBifastKeyword || isAdminKeyword)) {
                     tx.setCategory(TransactionCategory.ADMIN);
                     continue;
                 }
-                if (isAmt.test(6500.0) && (isAdminKeyword || matchesKeyword(fullText, true, "transfer", "trf", "online"))) {
+                if (isAmt.test(6500.0)
+                        && (isAdminKeyword || matchesKeyword(fullText, true, "transfer", "trf", "online"))) {
                     tx.setCategory(TransactionCategory.ADMIN);
                     continue;
                 }
@@ -58,10 +61,11 @@ public class CategorizationService {
                     tx.setCategory(TransactionCategory.ADMIN);
                     continue;
                 }
-                
-                // Biaya Bulanan / Admin Rekening (7.500, 10.000, 11.000, 12.000, 12.500, 14.000, 15.000, 17.000)
-                if (isAmt.test(15000.0) || isAmt.test(7500.0) || isAmt.test(10000.0) || isAmt.test(11000.0) 
-                    || isAmt.test(12500.0) || isAmt.test(14000.0) || isAmt.test(17000.0)) {
+
+                // Biaya Bulanan / Admin Rekening (7.500, 10.000, 11.000, 12.000, 12.500,
+                // 14.000, 15.000, 17.000)
+                if (isAmt.test(15000.0) || isAmt.test(7500.0) || isAmt.test(10000.0) || isAmt.test(11000.0)
+                        || isAmt.test(12500.0) || isAmt.test(14000.0) || isAmt.test(17000.0)) {
                     if (isAdminKeyword) {
                         tx.setCategory(TransactionCategory.ADMIN);
                         continue;
@@ -70,22 +74,24 @@ public class CategorizationService {
             }
 
             // 2. VETO LOGIC: Deteksi Aktivitas Manual User (Pindah/Transfer Orang)
-            // Fokus hanya pada penanda struktur manual: "Ke Rek", "To:", "Dari:", "Memo:", dll.
+            // Fokus hanya pada penanda struktur manual: "Ke Rek", "To:", "Dari:", "Memo:",
+            // dll.
             boolean isManualTransfer = matchesKeyword(fullText, true,
-                     "to:", "ke ", "dari ", "memo", "ref:", "dari:", "ke rek", "daripada", "kpd:", "untuk:");
-            
+                    "to:", "ke ", "dari ", "memo", "ref:", "dari:", "ke rek", "daripada", "kpd:", "untuk:");
+
             if (isManualTransfer) {
                 tx.setCategory(TransactionCategory.TRANSFER);
                 continue;
             }
 
             // 3. HIERARCHICAL MATCHING (Sisanya)
-            
+
             // PRIORITAS 1: TAX (Harus DB)
-            if (!isCredit && matchesKeyword(fullText, true, "pajak", "pph", "tax", "wht", "ppn", "pjk", "pajak bunga")) {
+            if (!isCredit
+                    && matchesKeyword(fullText, true, "pajak", "pph", "tax", "wht", "ppn", "pjk", "pajak bunga")) {
                 categorizedAs = TransactionCategory.TAX;
             }
-            
+
             // PRIORITAS 2: INTEREST (Harus CR)
             if (categorizedAs == TransactionCategory.TRANSFER && isCredit) {
                 if (matchesKeyword(fullText, true, "bunga", "interest", "int.", "jasa giro", "nisbah", "bagi hasil")) {
@@ -95,7 +101,8 @@ public class CategorizationService {
 
             // PRIORITAS 3: ADMIN (Harus DB)
             if (categorizedAs == TransactionCategory.TRANSFER && !isCredit) {
-                if (matchesKeyword(fullText, true, "adm", "admin", "biaya", "fee", "charge", "provision", "provisi", "materai", "mcm fee", "mcm adm")) {
+                if (matchesKeyword(fullText, true, "adm", "admin", "biaya", "fee", "charge", "provision", "provisi",
+                        "materai", "mcm fee", "mcm adm")) {
                     categorizedAs = TransactionCategory.ADMIN;
                 }
             }
