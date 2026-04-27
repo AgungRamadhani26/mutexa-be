@@ -87,7 +87,7 @@ public class DashboardService {
             BigDecimal bJumlahBulan = BigDecimal.valueOf(jumlahBulan);
             avgCredit = totalCredit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
             avgDebit = totalDebit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
-            
+
             cleanedAvgCredit = cleanedTotalCredit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
             cleanedAvgDebit = cleanedTotalDebit.divide(bJumlahBulan, 2, java.math.RoundingMode.HALF_UP);
          }
@@ -95,33 +95,35 @@ public class DashboardService {
 
       // Hitung Average Daily Balance (ADB) - Selalu data Asli sesuai feedback user
       BigDecimal avgDailyBalance = BigDecimal.ZERO;
-      List<BankTransaction> txs = bankTransactionRepository.findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
+      List<BankTransaction> txs = bankTransactionRepository
+            .findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
 
       if (!txs.isEmpty()) {
          // Tentukan rentang kalender: 1st of first month s/d End of last month
          LocalDate firstTxDate = txs.get(0).getTransactionDate();
          LocalDate lastTxDate = txs.get(txs.size() - 1).getTransactionDate();
-         
+
          LocalDate startDate = YearMonth.from(firstTxDate).atDay(1);
          LocalDate endDate = YearMonth.from(lastTxDate).atEndOfMonth();
 
-         // Hitung saldo awal (Opening Balance) persis sebelum transaksi pertama dieksekusi
+         // Hitung saldo awal (Opening Balance) persis sebelum transaksi pertama
+         // dieksekusi
          BankTransaction firstTx = txs.get(0);
          BigDecimal openingBalance = firstTx.getBalance() != null ? firstTx.getBalance() : BigDecimal.ZERO;
          if (firstTx.getBalance() != null && firstTx.getAmount() != null) {
-             if (firstTx.getMutationType() == com.example.mutexa_be.entity.enums.MutationType.CR) {
-                 openingBalance = firstTx.getBalance().subtract(firstTx.getAmount());
-             } else {
-                 openingBalance = firstTx.getBalance().add(firstTx.getAmount());
-             }
+            if (firstTx.getMutationType() == com.example.mutexa_be.entity.enums.MutationType.CR) {
+               openingBalance = firstTx.getBalance().subtract(firstTx.getAmount());
+            } else {
+               openingBalance = firstTx.getBalance().add(firstTx.getAmount());
+            }
          }
 
          // Map berisi tanggal -> Saldo Terakhir pada tanggal tersebut
          Map<LocalDate, BigDecimal> dailyBalances = new HashMap<>();
          for (BankTransaction tx : txs) {
-             if (tx.getBalance() != null) {
-                 dailyBalances.put(tx.getTransactionDate(), tx.getBalance());
-             }
+            if (tx.getBalance() != null) {
+               dailyBalances.put(tx.getTransactionDate(), tx.getBalance());
+            }
          }
 
          BigDecimal runningSum = BigDecimal.ZERO;
@@ -130,21 +132,22 @@ public class DashboardService {
 
          // Looping per hari secara berurutan
          for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-             if (date.isBefore(firstTxDate)) {
-                 // Belum ada transaksi, pakai saldo awal
-             } else {
-                 // Jika ada record saldo di tanggal tersebut, update currentBalance
-                 if (dailyBalances.containsKey(date)) {
-                     currentBalance = dailyBalances.get(date);
-                 }
-                 // Jika tidak ada di map, currentBalance akan menggunakan nilai hari sebelumnya (gap-fill)
-             }
-             runningSum = runningSum.add(currentBalance);
-             totalDays++;
+            if (date.isBefore(firstTxDate)) {
+               // Belum ada transaksi, pakai saldo awal
+            } else {
+               // Jika ada record saldo di tanggal tersebut, update currentBalance
+               if (dailyBalances.containsKey(date)) {
+                  currentBalance = dailyBalances.get(date);
+               }
+               // Jika tidak ada di map, currentBalance akan menggunakan nilai hari sebelumnya
+               // (gap-fill)
+            }
+            runningSum = runningSum.add(currentBalance);
+            totalDays++;
          }
 
          if (totalDays > 0) {
-             avgDailyBalance = runningSum.divide(BigDecimal.valueOf(totalDays), 2, java.math.RoundingMode.HALF_UP);
+            avgDailyBalance = runningSum.divide(BigDecimal.valueOf(totalDays), 2, java.math.RoundingMode.HALF_UP);
          }
       }
 
@@ -163,7 +166,8 @@ public class DashboardService {
    }
 
    public List<DetailTransaksiResponse> getDetailSemuaTransaksi(Long documentId) {
-      List<BankTransaction> transactions = bankTransactionRepository.findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
+      List<BankTransaction> transactions = bankTransactionRepository
+            .findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
@@ -172,12 +176,15 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory().name())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
             .build()).collect(Collectors.toList());
    }
 
-   public List<DetailTransaksiResponse> getTransactionsByCategory(Long documentId, com.example.mutexa_be.entity.enums.TransactionCategory category) {
-      List<BankTransaction> transactions = bankTransactionRepository.findAllByMutationDocumentIdAndCategoryOrderByTransactionDateAscIdAsc(documentId, category);
+   public List<DetailTransaksiResponse> getTransactionsByCategory(Long documentId,
+         com.example.mutexa_be.entity.enums.TransactionCategory category) {
+      List<BankTransaction> transactions = bankTransactionRepository
+            .findAllByMutationDocumentIdAndCategoryOrderByTransactionDateAscIdAsc(documentId, category);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
@@ -186,13 +193,15 @@ public class DashboardService {
             .jumlah(tx.getAmount())
             .saldo(tx.getBalance())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory().name())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
             .build()).collect(Collectors.toList());
    }
 
    public List<DetailTransaksiResponse> getTop10CreditAmount(Long documentId) {
-      List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
-            documentId, com.example.mutexa_be.entity.enums.MutationType.CR);
+      List<BankTransaction> transactions = bankTransactionRepository
+            .findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
+                  documentId, com.example.mutexa_be.entity.enums.MutationType.CR);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
@@ -200,13 +209,15 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory().name())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
             .build()).collect(Collectors.toList());
    }
 
    public List<DetailTransaksiResponse> getTop10DebitAmount(Long documentId) {
-      List<BankTransaction> transactions = bankTransactionRepository.findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
-            documentId, com.example.mutexa_be.entity.enums.MutationType.DB);
+      List<BankTransaction> transactions = bankTransactionRepository
+            .findTop10ByMutationDocumentIdAndMutationTypeOrderByAmountDesc(
+                  documentId, com.example.mutexa_be.entity.enums.MutationType.DB);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
@@ -214,7 +225,8 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory().name())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
             .build()).collect(Collectors.toList());
    }
 
@@ -227,7 +239,8 @@ public class DashboardService {
             .flag(tx.getMutationType() != null ? tx.getMutationType().name() : "N/A")
             .jumlah(tx.getAmount())
             .isExcluded(tx.getIsExcluded())
-            .category(tx.getCategory().name())
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
             .build()).collect(Collectors.toList());
    }
 
@@ -244,20 +257,23 @@ public class DashboardService {
             .build()).collect(Collectors.toList());
    }
 
-   // Fungsi untuk mengambil List hasil konversi Object[] menjadi DTO TopFreqResponse (Top 10 Credit Frequency)
+   // Fungsi untuk mengambil List hasil konversi Object[] menjadi DTO
+   // TopFreqResponse (Top 10 Credit Frequency)
    public List<TopFreqResponse> getTop10CreditFreq(Long documentId) {
       List<Object[]> rawFreqData = bankTransactionRepository.findTop10CreditFreqByDocumentId(documentId);
-      
-      // Mengubah setiap baris data mentah ke wujud Response Objek yang gampang dibaca Angular
+
+      // Mengubah setiap baris data mentah ke wujud Response Objek yang gampang dibaca
+      // Angular
       return rawFreqData.stream().map(row -> {
          String keterangan = row[0] != null ? row[0].toString() : "TANPA KETERANGAN"; // Kolom pertama: keterangan
-         Long frekuensi = row[1] != null ? ((Number) row[1]).longValue() : 0L;        // Kolom kedua: frekuensi COUNT()
+         Long frekuensi = row[1] != null ? ((Number) row[1]).longValue() : 0L; // Kolom kedua: frekuensi COUNT()
          return TopFreqResponse.builder()
-                 .keterangan(keterangan)
-                 .frekuensi(frekuensi)
-                 .build();
+               .keterangan(keterangan)
+               .frekuensi(frekuensi)
+               .build();
       }).collect(Collectors.toList());
    }
+
    // Fungsi untuk mengambil data Top 10 Debit Frequency
    public List<TopFreqResponse> getTop10DebitFreq(Long documentId) {
       List<Object[]> rawFreqData = bankTransactionRepository.findTop10DebitFreqByDocumentId(documentId);
@@ -266,33 +282,33 @@ public class DashboardService {
          String keterangan = row[0] != null ? row[0].toString() : "TANPA KETERANGAN";
          Long frekuensi = row[1] != null ? ((Number) row[1]).longValue() : 0L;
          return TopFreqResponse.builder()
-                 .keterangan(keterangan)
-                 .frekuensi(frekuensi)
-                 .build();
+               .keterangan(keterangan)
+               .frekuensi(frekuensi)
+               .build();
       }).collect(Collectors.toList());
    }
 
    public List<TopFreqResponse> getTop10CreditFreqCleaned(Long documentId) {
       List<Object[]> rawFreqData = bankTransactionRepository.findTop10CreditFreqCleaned(documentId);
       return rawFreqData.stream().map(row -> TopFreqResponse.builder()
-              .keterangan(row[0] != null ? row[0].toString() : "TANPA KETERANGAN")
-              .frekuensi(row[1] != null ? ((Number) row[1]).longValue() : 0L)
-              .build()).collect(Collectors.toList());
+            .keterangan(row[0] != null ? row[0].toString() : "TANPA KETERANGAN")
+            .frekuensi(row[1] != null ? ((Number) row[1]).longValue() : 0L)
+            .build()).collect(Collectors.toList());
    }
 
    public List<TopFreqResponse> getTop10DebitFreqCleaned(Long documentId) {
       List<Object[]> rawFreqData = bankTransactionRepository.findTop10DebitFreqCleaned(documentId);
       return rawFreqData.stream().map(row -> TopFreqResponse.builder()
-              .keterangan(row[0] != null ? row[0].toString() : "TANPA KETERANGAN")
-              .frekuensi(row[1] != null ? ((Number) row[1]).longValue() : 0L)
-              .build()).collect(Collectors.toList());
+            .keterangan(row[0] != null ? row[0].toString() : "TANPA KETERANGAN")
+            .frekuensi(row[1] != null ? ((Number) row[1]).longValue() : 0L)
+            .build()).collect(Collectors.toList());
    }
 
    public void toggleExclude(Long transactionId) {
-       BankTransaction tx = bankTransactionRepository.findById(transactionId)
-               .orElseThrow(() -> new IllegalArgumentException("Transaksi tidak ditemukan"));
-       tx.setIsExcluded(tx.getIsExcluded() == null ? true : !tx.getIsExcluded());
-       bankTransactionRepository.save(tx);
+      BankTransaction tx = bankTransactionRepository.findById(transactionId)
+            .orElseThrow(() -> new IllegalArgumentException("Transaksi tidak ditemukan"));
+      tx.setIsExcluded(tx.getIsExcluded() == null ? true : !tx.getIsExcluded());
+      bankTransactionRepository.save(tx);
    }
 
    /**
@@ -302,7 +318,8 @@ public class DashboardService {
    public List<DetailTransaksiResponse> getAnomalyTransactions(Long documentId,
          com.example.mutexa_be.entity.enums.MutationType mutationType) {
       List<BankTransaction> transactions = bankTransactionRepository
-            .findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByTransactionDateAscIdAsc(documentId, mutationType);
+            .findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByTransactionDateAscIdAsc(documentId,
+                  mutationType);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)

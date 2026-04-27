@@ -321,7 +321,8 @@ public class AnomalyDetectionService {
                String thresholdStr = threshold.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
                appendAnomalyReason(crTx,
                      "Window Dressing - Split Withdrawal (Dana Masuk Rp " + crAmt.toPlainString()
-                           + " melampaui batas 15% omzet [Rp " + thresholdStr + "] lalu Ditarik Bertahap " + accumulated.size()
+                           + " melampaui batas 15% omzet [Rp " + thresholdStr + "] lalu Ditarik Bertahap "
+                           + accumulated.size()
                            + " kali dlm 48 Jam)");
 
                for (BankTransaction matched : accumulated) {
@@ -694,6 +695,7 @@ public class AnomalyDetectionService {
     */
    private void appendAnomalyReason(BankTransaction tx, String newReason) {
       tx.setIsAnomaly(true);
+      tx.setIsExcluded(true);
 
       String existing = tx.getAnomalyReason();
       if (existing == null || existing.isBlank()) {
