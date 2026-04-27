@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "bank_account")
+@Table(name = "bank_account", uniqueConstraints = {
+      @UniqueConstraint(columnNames = {"account_number", "bank_name"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,8 +24,8 @@ public class BankAccount {
    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private Long id;
 
-   // Nomor rekening yang wajib diisi dan bersifat unik di database
-   @Column(name = "account_number", nullable = false, unique = true)
+   // Nomor rekening yang wajib diisi (kombinasi dengan bank_name harus unik)
+   @Column(name = "account_number", nullable = false)
    private String accountNumber;
 
    // Nama lengkap nasabah / pemilik rekening

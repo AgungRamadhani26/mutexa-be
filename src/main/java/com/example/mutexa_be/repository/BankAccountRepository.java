@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface BankAccountRepository extends JpaRepository<BankAccount, Long> {
-   Optional<BankAccount> findByAccountNumber(String accountNumber);
+   Optional<BankAccount> findByAccountNumberAndBankName(String accountNumber, String bankName);
 
    @Query("SELECT new com.example.mutexa_be.dto.response.AccountWithDocumentsResponse(" +
           "b.id, b.accountNumber, b.accountName, b.bankName, COUNT(d.id)) " +

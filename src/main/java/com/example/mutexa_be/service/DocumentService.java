@@ -166,7 +166,8 @@ public class DocumentService {
     * Jika tidak ditemukan, buat entitas baru (Upsert pattern).
     */
    private BankAccount findOrCreateAccount(UploadDocumentRequest request) {
-      return bankAccountRepository.findByAccountNumber(request.getAccountNumber())
+      String bankName = request.getBankName() != null ? request.getBankName().toUpperCase() : "";
+      return bankAccountRepository.findByAccountNumberAndBankName(request.getAccountNumber(), bankName)
             .orElseGet(() -> {
                log.info("Rekening baru terdeteksi, menyimpan rekening: {}", request.getAccountNumber());
                return bankAccountRepository.save(BankAccount.builder()
