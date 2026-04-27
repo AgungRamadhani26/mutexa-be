@@ -302,7 +302,7 @@ public class DashboardService {
    public List<DetailTransaksiResponse> getAnomalyTransactions(Long documentId,
          com.example.mutexa_be.entity.enums.MutationType mutationType) {
       List<BankTransaction> transactions = bankTransactionRepository
-            .findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByAmountDesc(documentId, mutationType);
+            .findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByTransactionDateAscIdAsc(documentId, mutationType);
       return transactions.stream().map(tx -> DetailTransaksiResponse.builder()
             .id(tx.getId())
             .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
