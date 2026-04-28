@@ -72,7 +72,7 @@ public class DashboardController {
    @GetMapping("/admin-transactions")
    public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getAdminTransactions(
          @RequestParam Long documentId) {
-      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId, 
+      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId,
             com.example.mutexa_be.entity.enums.TransactionCategory.ADMIN);
       return ResponseUtil.ok(data, "Berhasil mengambil data transaksi admin.");
    }
@@ -83,7 +83,7 @@ public class DashboardController {
    @GetMapping("/tax-transactions")
    public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getTaxTransactions(
          @RequestParam Long documentId) {
-      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId, 
+      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId,
             com.example.mutexa_be.entity.enums.TransactionCategory.TAX);
       return ResponseUtil.ok(data, "Berhasil mengambil data transaksi pajak.");
    }
@@ -94,7 +94,7 @@ public class DashboardController {
    @GetMapping("/interest-transactions")
    public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> getInterestTransactions(
          @RequestParam Long documentId) {
-      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId, 
+      List<DetailTransaksiResponse> data = dashboardService.getTransactionsByCategory(documentId,
             com.example.mutexa_be.entity.enums.TransactionCategory.INTEREST);
       return ResponseUtil.ok(data, "Berhasil mengambil data transaksi bunga.");
    }
@@ -164,45 +164,62 @@ public class DashboardController {
    @GetMapping("/top10-credit-freq-cleaned")
    public ResponseEntity<ApiResponse<List<com.example.mutexa_be.dto.response.TopFreqResponse>>> getTop10CreditFreqCleaned(
          @RequestParam Long documentId) {
-      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService.getTop10CreditFreqCleaned(documentId);
+      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService
+            .getTop10CreditFreqCleaned(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi kredit top 10 (cleaned).");
    }
 
    @GetMapping("/top10-debit-freq-cleaned")
    public ResponseEntity<ApiResponse<List<com.example.mutexa_be.dto.response.TopFreqResponse>>> getTop10DebitFreqCleaned(
          @RequestParam Long documentId) {
-      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService.getTop10DebitFreqCleaned(documentId);
+      List<com.example.mutexa_be.dto.response.TopFreqResponse> data = dashboardService
+            .getTop10DebitFreqCleaned(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data frekuensi debit top 10 (cleaned).");
    }
 
    @GetMapping("/export-excel")
    public ResponseEntity<InputStreamResource> downloadExcel(
          @RequestParam Long documentId,
+         @RequestParam(required = false) String accountName,
          @RequestParam(required = false) String month,
-         @RequestParam(required = false) String flag) throws IOException {
+         @RequestParam(required = false) String flag,
+         @RequestParam(required = false) String excludeStatus) throws IOException {
       List<DetailTransaksiResponse> data = dashboardService.getDetailSemuaTransaksi(documentId);
-      
-      // Filter out excluded items from the excel export
-      data = data.stream().filter(tx -> tx.getIsExcluded() == null || !tx.getIsExcluded()).toList();
+
+      // Apply Exclude Status Filter
+      boolean isExcludeFiltered = false;
+      if (excludeStatus != null && !excludeStatus.trim().isEmpty() && !excludeStatus.equals("ALL")) {
+         isExcludeFiltered = true;
+         if (excludeStatus.equals("ACTIVE")) {
+            data = data.stream().filter(tx -> tx.getIsExcluded() == null || !tx.getIsExcluded()).toList();
+         } else if (excludeStatus.equals("EXCLUDED")) {
+            data = data.stream().filter(tx -> tx.getIsExcluded() != null && tx.getIsExcluded()).toList();
+         }
+      }
 
       // Apply Month Filter
       if (month != null && !month.trim().isEmpty() && !month.equals("ALL")) {
-          data = data.stream().filter(tx -> tx.getTanggal() != null && tx.getTanggal().startsWith(month)).toList();
+         data = data.stream().filter(tx -> tx.getTanggal() != null && tx.getTanggal().startsWith(month)).toList();
       }
 
-      // Apply Flag Filter 
-      boolean showSaldo = false;
+      // Apply Flag Filter
+      boolean isFlagFiltered = false;
       if (flag != null && !flag.trim().isEmpty() && !flag.equals("ALL")) {
-          data = data.stream().filter(tx -> tx.getFlag() != null && tx.getFlag().equalsIgnoreCase(flag)).toList();
-      } else {
-          // Hanya tampilkan kolom saldo jika filter flag adalah SEMUA (ALL) atau tidak ada
-          showSaldo = true;
+         isFlagFiltered = true;
+         data = data.stream().filter(tx -> tx.getFlag() != null && tx.getFlag().equalsIgnoreCase(flag)).toList();
       }
+
+      // Tampilkan kolom saldo HANYA jika tidak ada filter flag DAN tidak ada filter
+      // exclude
+      boolean showSaldo = !isFlagFiltered && !isExcludeFiltered;
 
       ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data, showSaldo);
 
+      // Build dynamic filename
+      String fileName = buildExportFileName(accountName, month, flag, excludeStatus);
+
       HttpHeaders headers = new HttpHeaders();
-      headers.add("Content-Disposition", "attachment; filename=detail_transaksi.xlsx");
+      headers.add("Content-Disposition", "attachment; filename=" + fileName);
 
       return ResponseEntity
             .ok()
@@ -211,8 +228,59 @@ public class DashboardController {
             .body(new InputStreamResource(in));
    }
 
+   /**
+    * Membangun nama file Excel dinamis berdasarkan filter yang diterapkan.
+    * Format: detail_transaksi_[NamaPemilik]_[Filter].xlsx
+    */
+   private String buildExportFileName(String accountName, String month, String flag, String excludeStatus) {
+      StringBuilder sb = new StringBuilder("detail_transaksi");
+
+      // Tambahkan nama pemilik rekening (hilangkan spasi)
+      if (accountName != null && !accountName.trim().isEmpty()) {
+         String cleanName = accountName.trim().replaceAll("\\s+", "");
+         sb.append("_").append(cleanName);
+      }
+
+      // Cek apakah ada filter aktif
+      boolean hasMonthFilter = month != null && !month.trim().isEmpty() && !month.equals("ALL");
+      boolean hasFlagFilter = flag != null && !flag.trim().isEmpty() && !flag.equals("ALL");
+      boolean hasExcludeFilter = excludeStatus != null && !excludeStatus.trim().isEmpty()
+            && !excludeStatus.equals("ALL");
+
+      if (!hasMonthFilter && !hasFlagFilter && !hasExcludeFilter) {
+         sb.append("_Lengkap");
+      } else {
+         // Filter bulan: 2026-01 → Jan2026
+         if (hasMonthFilter) {
+            String[] parts = month.split("-");
+            if (parts.length == 2) {
+               String[] monthNames = { "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+                     "Jul", "Ags", "Sep", "Okt", "Nov", "Des" };
+               int monthIdx = Integer.parseInt(parts[1]) - 1;
+               if (monthIdx >= 0 && monthIdx < 12) {
+                  sb.append("_").append(monthNames[monthIdx]).append(parts[0]);
+               }
+            }
+         }
+
+         // Filter flag: CR → Kredit, DB → Debit
+         if (hasFlagFilter) {
+            sb.append("_").append("CR".equalsIgnoreCase(flag) ? "Kredit" : "Debit");
+         }
+
+         // Filter exclude: ACTIVE → Aktif, EXCLUDED → Excluded
+         if (hasExcludeFilter) {
+            sb.append("_").append("ACTIVE".equals(excludeStatus) ? "Aktif" : "Excluded");
+         }
+      }
+
+      sb.append(".xlsx");
+      return sb.toString();
+   }
+
    @PostMapping("/toggle-exclude/{id}")
-   public ResponseEntity<ApiResponse<String>> toggleExclude(@org.springframework.web.bind.annotation.PathVariable Long id) {
+   public ResponseEntity<ApiResponse<String>> toggleExclude(
+         @org.springframework.web.bind.annotation.PathVariable Long id) {
       dashboardService.toggleExclude(id);
       return ResponseUtil.ok("Success toggle", "Berhasil mengubah status exclude transaksi.");
    }
