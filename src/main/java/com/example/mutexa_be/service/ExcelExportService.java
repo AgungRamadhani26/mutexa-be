@@ -13,10 +13,21 @@ import java.util.List;
 @Service
 public class ExcelExportService {
 
-   public ByteArrayInputStream exportDetailTransaksiToExcel(List<DetailTransaksiResponse> data, boolean showSaldo) throws IOException {
-      String[] columns = showSaldo 
-          ? new String[]{ "Tanggal", "Keterangan", "Flag", "Debit", "Kredit", "Saldo" }
-          : new String[]{ "Tanggal", "Keterangan", "Flag", "Debit", "Kredit" };
+   public ByteArrayInputStream exportDetailTransaksiToExcel(List<DetailTransaksiResponse> data, boolean showSaldo,
+         String filterFlag) throws IOException {
+      String[] columns;
+      boolean isKreditOnly = "CR".equalsIgnoreCase(filterFlag);
+      boolean isDebitOnly = "DB".equalsIgnoreCase(filterFlag);
+
+      if (isKreditOnly) {
+         columns = new String[] { "Tanggal", "Keterangan", "Kredit" }; // hide flag, debit, saldo
+      } else if (isDebitOnly) {
+         columns = new String[] { "Tanggal", "Keterangan", "Debit" }; // hide flag, kredit, saldo
+      } else {
+         columns = showSaldo
+               ? new String[] { "Tanggal", "Keterangan", "Flag", "Debit", "Kredit", "Saldo" }
+               : new String[] { "Tanggal", "Keterangan", "Flag", "Debit", "Kredit" };
+      }
 
       try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
          Sheet sheet = workbook.createSheet("Detail Transaksi");
@@ -88,48 +99,52 @@ public class ExcelExportService {
             descCell.setCellValue(tx.getKeterangan() != null ? tx.getKeterangan() : "-");
             descCell.setCellStyle(dataCellStyle);
 
-            Cell flagCell = row.createCell(2);
-            flagCell.setCellValue(tx.getFlag() != null ? tx.getFlag() : "-");
-            flagCell.setCellStyle(dataCellStyle);
+            // Dynamic cell placement based on active columns
+            int cellIdx = 2; // Date is 0, Desc is 1
 
-            Cell debitCell = row.createCell(3);
-            Cell creditCell = row.createCell(4);
-            debitCell.setCellStyle(numberCellStyle);
-            creditCell.setCellStyle(numberCellStyle);
-
-            if (tx.getJumlah() != null) {
-               if ("DB".equalsIgnoreCase(tx.getFlag())) {
-                  debitCell.setCellValue(tx.getJumlah().doubleValue());
-                  creditCell.setCellValue("");
-               } else if ("CR".equalsIgnoreCase(tx.getFlag())) {
-                  debitCell.setCellValue("");
-                  creditCell.setCellValue(tx.getJumlah().doubleValue());
-               } else {
-                  debitCell.setCellValue("");
-                  creditCell.setCellValue("");
-               }
-            } else {
-               debitCell.setCellValue("");
-               creditCell.setCellValue("");
+            if (!isKreditOnly && !isDebitOnly) {
+               Cell flagCell = row.createCell(cellIdx++);
+               flagCell.setCellValue(tx.getFlag() != null ? tx.getFlag() : "-");
+               flagCell.setCellStyle(dataCellStyle);
             }
 
-            if (showSaldo) {
-               Cell saldoCell = row.createCell(5);
+            if (!isKreditOnly) {
+               Cell debitCell = row.createCell(cellIdx++);
+               debitCell.setCellStyle(numberCellStyle);
+               if (tx.getJumlah() != null && "DB".equalsIgnoreCase(tx.getFlag())) {
+                  debitCell.setCellValue(tx.getJumlah().doubleValue());
+               } else {
+                  debitCell.setCellValue("");
+               }
+            }
+
+            if (!isDebitOnly) {
+               Cell creditCell = row.createCell(cellIdx++);
+               creditCell.setCellStyle(numberCellStyle);
+               if (tx.getJumlah() != null && "CR".equalsIgnoreCase(tx.getFlag())) {
+                  creditCell.setCellValue(tx.getJumlah().doubleValue());
+               } else {
+                  creditCell.setCellValue("");
+               }
+            }
+
+            if (showSaldo && !isKreditOnly && !isDebitOnly) {
+               Cell saldoCell = row.createCell(cellIdx);
                saldoCell.setCellStyle(numberCellStyle);
-               
+
                boolean isLastOfDate = true;
                if (i < data.size() - 1) {
-                   DetailTransaksiResponse nextTx = data.get(i + 1);
-                   if (tx.getTanggal() != null && nextTx.getTanggal() != null 
-                       && tx.getTanggal().equals(nextTx.getTanggal())) {
-                       isLastOfDate = false;
-                   }
+                  DetailTransaksiResponse nextTx = data.get(i + 1);
+                  if (tx.getTanggal() != null && nextTx.getTanggal() != null
+                        && tx.getTanggal().equals(nextTx.getTanggal())) {
+                     isLastOfDate = false;
+                  }
                }
-               
+
                if (isLastOfDate && tx.getSaldo() != null) {
-                   saldoCell.setCellValue(tx.getSaldo().doubleValue());
+                  saldoCell.setCellValue(tx.getSaldo().doubleValue());
                } else {
-                   saldoCell.setCellValue("");
+                  saldoCell.setCellValue("");
                }
             }
          }

@@ -215,7 +215,7 @@ public class DashboardController {
       // exclude
       boolean showSaldo = !isFlagFiltered && !isExcludeFiltered;
 
-      ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data, showSaldo);
+      ByteArrayInputStream in = excelExportService.exportDetailTransaksiToExcel(data, showSaldo, flag);
 
       // Build dynamic filename
       String fileName = buildExportFileName(accountName, month, flag, excludeStatus);
