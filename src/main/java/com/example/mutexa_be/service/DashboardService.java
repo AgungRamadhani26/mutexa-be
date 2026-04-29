@@ -7,6 +7,7 @@ import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Month;
@@ -331,5 +332,29 @@ public class DashboardService {
             .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
             .anomalyReason(tx.getAnomalyReason())
             .build()).collect(Collectors.toList());
+   }
+
+   @Transactional
+   public void massToggleExclude(Long documentId, String category, Boolean isExcluded) {
+      if (category == null) return;
+      switch (category.toUpperCase()) {
+         case "ADMIN":
+            bankTransactionRepository.updateIsExcludedByCategory(documentId, com.example.mutexa_be.entity.enums.TransactionCategory.ADMIN, isExcluded);
+            break;
+         case "TAX":
+            bankTransactionRepository.updateIsExcludedByCategory(documentId, com.example.mutexa_be.entity.enums.TransactionCategory.TAX, isExcluded);
+            break;
+         case "INTEREST":
+            bankTransactionRepository.updateIsExcludedByCategory(documentId, com.example.mutexa_be.entity.enums.TransactionCategory.INTEREST, isExcluded);
+            break;
+         case "ANOMALY_CR":
+            bankTransactionRepository.updateIsExcludedByAnomalyAndMutationType(documentId, com.example.mutexa_be.entity.enums.MutationType.CR, isExcluded);
+            break;
+         case "ANOMALY_DB":
+            bankTransactionRepository.updateIsExcludedByAnomalyAndMutationType(documentId, com.example.mutexa_be.entity.enums.MutationType.DB, isExcluded);
+            break;
+         default:
+            throw new IllegalArgumentException("Unknown category for mass exclude: " + category);
+      }
    }
 }

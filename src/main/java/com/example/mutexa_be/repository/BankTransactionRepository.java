@@ -176,4 +176,12 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
       // Anomaly Credit: transaksi CR yang terdeteksi anomali
       List<BankTransaction> findAllByMutationDocumentIdAndIsAnomalyTrueAndMutationTypeOrderByTransactionDateAscIdAsc(
                   Long mutationDocumentId, com.example.mutexa_be.entity.enums.MutationType mutationType);
+
+      @org.springframework.data.jpa.repository.Modifying
+      @Query("UPDATE BankTransaction b SET b.isExcluded = :isExcluded WHERE b.mutationDocument.id = :documentId AND b.category = :category")
+      void updateIsExcludedByCategory(Long documentId, com.example.mutexa_be.entity.enums.TransactionCategory category, Boolean isExcluded);
+
+      @org.springframework.data.jpa.repository.Modifying
+      @Query("UPDATE BankTransaction b SET b.isExcluded = :isExcluded WHERE b.mutationDocument.id = :documentId AND b.isAnomaly = true AND b.mutationType = :mutationType")
+      void updateIsExcludedByAnomalyAndMutationType(Long documentId, com.example.mutexa_be.entity.enums.MutationType mutationType, Boolean isExcluded);
 }

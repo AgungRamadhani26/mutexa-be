@@ -1,6 +1,7 @@
 package com.example.mutexa_be.controller;
 
 import com.example.mutexa_be.base.ApiResponse;
+import com.example.mutexa_be.dto.request.MassExcludeRequest;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
 import com.example.mutexa_be.dto.response.RingkasanSaldoResponse;
 import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -283,6 +285,12 @@ public class DashboardController {
          @org.springframework.web.bind.annotation.PathVariable Long id) {
       dashboardService.toggleExclude(id);
       return ResponseUtil.ok("Success toggle", "Berhasil mengubah status exclude transaksi.");
+   }
+
+   @PostMapping("/mass-toggle-exclude")
+   public ResponseEntity<ApiResponse<String>> massToggleExclude(@RequestBody MassExcludeRequest request) {
+      dashboardService.massToggleExclude(request.getDocumentId(), request.getCategory(), request.getIsExcluded());
+      return ResponseUtil.ok("Success mass toggle", "Berhasil melakukan exclude/include massal.");
    }
 
    /**
