@@ -179,9 +179,11 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
       @org.springframework.data.jpa.repository.Modifying
       @Query("UPDATE BankTransaction b SET b.isExcluded = :isExcluded WHERE b.mutationDocument.id = :documentId AND b.category = :category")
-      void updateIsExcludedByCategory(Long documentId, com.example.mutexa_be.entity.enums.TransactionCategory category, Boolean isExcluded);
+      void updateIsExcludedByCategory(Long documentId, com.example.mutexa_be.entity.enums.TransactionCategory category,
+                  Boolean isExcluded);
 
       @org.springframework.data.jpa.repository.Modifying
       @Query("UPDATE BankTransaction b SET b.isExcluded = :isExcluded WHERE b.mutationDocument.id = :documentId AND b.isAnomaly = true AND b.mutationType = :mutationType")
-      void updateIsExcludedByAnomalyAndMutationType(Long documentId, com.example.mutexa_be.entity.enums.MutationType mutationType, Boolean isExcluded);
+      void updateIsExcludedByAnomalyAndMutationType(Long documentId,
+                  com.example.mutexa_be.entity.enums.MutationType mutationType, Boolean isExcluded);
 }

@@ -336,22 +336,28 @@ public class DashboardService {
 
    @Transactional
    public void massToggleExclude(Long documentId, String category, Boolean isExcluded) {
-      if (category == null) return;
+      if (category == null)
+         return;
       switch (category.toUpperCase()) {
          case "ADMIN":
-            bankTransactionRepository.updateIsExcludedByCategory(documentId, com.example.mutexa_be.entity.enums.TransactionCategory.ADMIN, isExcluded);
+            bankTransactionRepository.updateIsExcludedByCategory(documentId,
+                  com.example.mutexa_be.entity.enums.TransactionCategory.ADMIN, isExcluded);
             break;
          case "TAX":
-            bankTransactionRepository.updateIsExcludedByCategory(documentId, com.example.mutexa_be.entity.enums.TransactionCategory.TAX, isExcluded);
+            bankTransactionRepository.updateIsExcludedByCategory(documentId,
+                  com.example.mutexa_be.entity.enums.TransactionCategory.TAX, isExcluded);
             break;
          case "INTEREST":
-            bankTransactionRepository.updateIsExcludedByCategory(documentId, com.example.mutexa_be.entity.enums.TransactionCategory.INTEREST, isExcluded);
+            bankTransactionRepository.updateIsExcludedByCategory(documentId,
+                  com.example.mutexa_be.entity.enums.TransactionCategory.INTEREST, isExcluded);
             break;
          case "ANOMALY_CR":
-            bankTransactionRepository.updateIsExcludedByAnomalyAndMutationType(documentId, com.example.mutexa_be.entity.enums.MutationType.CR, isExcluded);
+            bankTransactionRepository.updateIsExcludedByAnomalyAndMutationType(documentId,
+                  com.example.mutexa_be.entity.enums.MutationType.CR, isExcluded);
             break;
          case "ANOMALY_DB":
-            bankTransactionRepository.updateIsExcludedByAnomalyAndMutationType(documentId, com.example.mutexa_be.entity.enums.MutationType.DB, isExcluded);
+            bankTransactionRepository.updateIsExcludedByAnomalyAndMutationType(documentId,
+                  com.example.mutexa_be.entity.enums.MutationType.DB, isExcluded);
             break;
          default:
             throw new IllegalArgumentException("Unknown category for mass exclude: " + category);

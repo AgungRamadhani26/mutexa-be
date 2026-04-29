@@ -60,7 +60,8 @@ public class BankTransaction {
    @Column(name = "balance", precision = 19, scale = 4)
    private BigDecimal balance;
 
-   // Nama spesifik pengirim/penerima tanpa atribut teks sampah (misal: "AHSA JAYA METALINDO")
+   // Nama spesifik pengirim/penerima tanpa atribut teks sampah (misal: "AHSA JAYA
+   // METALINDO")
    @Column(name = "counterparty_name")
    private String counterpartyName;
 
@@ -80,12 +81,14 @@ public class BankTransaction {
    @Column(name = "duplicate_hash", unique = true, nullable = false)
    private String duplicateHash;
 
-   // Menandai apakah mutasi ini terdeteksi sebagai anomali oleh AnomalyDetectionService
+   // Menandai apakah mutasi ini terdeteksi sebagai anomali oleh
+   // AnomalyDetectionService
    @Column(name = "is_anomaly", nullable = false)
    @Builder.Default
    private Boolean isAnomaly = false;
 
-   // Alasan kenapa transaksi ini dianggap sebagai anomali (misal: "Indikasi Window Dressing")
+   // Alasan kenapa transaksi ini dianggap sebagai anomali (misal: "Indikasi Window
+   // Dressing")
    @Column(name = "anomaly_reason", columnDefinition = "TEXT")
    private String anomalyReason;
 
