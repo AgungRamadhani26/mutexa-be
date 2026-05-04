@@ -363,4 +363,42 @@ public class DashboardService {
             throw new IllegalArgumentException("Unknown category for mass exclude: " + category);
       }
    }
+
+   /**
+    * Pencarian transaksi berdasarkan keyword (nama afiliasi, no rekening, dsb).
+    * Digunakan untuk fitur Pendeteksi Afiliasi / Window Dressing.
+    */
+   public List<DetailTransaksiResponse> searchTransactionsByKeyword(Long documentId, String keyword) {
+      if (keyword == null || keyword.trim().isEmpty())
+         return List.of();
+      List<BankTransaction> list = bankTransactionRepository.searchByKeyword(documentId, keyword.trim());
+      return list.stream().map(tx -> DetailTransaksiResponse.builder()
+            .id(tx.getId())
+            .tanggal(tx.getTransactionDate() != null ? tx.getTransactionDate().toString() : null)
+            .keterangan(tx.getNormalizedDescription() != null ? tx.getNormalizedDescription() : tx.getRawDescription())
+            .flag(tx.getMutationType() != null ? tx.getMutationType().name() : null)
+            .jumlah(tx.getAmount())
+            .saldo(tx.getBalance())
+            .isExcluded(tx.getIsExcluded() != null ? tx.getIsExcluded() : false)
+            .category(tx.getCategory() != null ? tx.getCategory().name() : "TRANSFER")
+            .anomalyReason(tx.getAnomalyReason())
+            .build()).collect(Collectors.toList());
+   }
+
+   /**
+    * Mass toggle exclude/include berdasarkan keyword.
+    * Semua transaksi yang cocok dengan keyword akan diubah statusnya sekaligus.
+    */
+   @Transactional
+   public void massToggleKeywordExclude(Long documentId, String keyword, Boolean isExcluded) {
+      if (keyword == null || keyword.trim().isEmpty())
+         return;
+      if (Boolean.TRUE.equals(isExcluded)) {
+         // Jika Exclude (Sembunyikan): Hajar semua yang cocok
+         bankTransactionRepository.updateIsExcludedByKeyword(documentId, keyword.trim(), true);
+      } else {
+         // Jika Include (Tampilkan Kembali): Pakai mode aman agar Admin/Tax/Anomali tidak bocor
+         bankTransactionRepository.updateIsExcludedByKeywordSafeInclude(documentId, keyword.trim());
+      }
+   }
 }

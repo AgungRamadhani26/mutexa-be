@@ -186,4 +186,39 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
       @Query("UPDATE BankTransaction b SET b.isExcluded = :isExcluded WHERE b.mutationDocument.id = :documentId AND b.isAnomaly = true AND b.mutationType = :mutationType")
       void updateIsExcludedByAnomalyAndMutationType(Long documentId,
                   com.example.mutexa_be.entity.enums.MutationType mutationType, Boolean isExcluded);
+
+      // Custom Keyword Exclude: Search transaksi berdasarkan keyword
+      // Menggunakan CAST(... AS NVARCHAR(MAX)) agar aman dengan kolom TEXT di SQL Server
+      @Query(value = "SELECT * FROM bank_transaction t " +
+                  "WHERE t.document_id = :documentId " +
+                  "AND (" +
+                  "    LOWER(t.counterparty_name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(t.normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(t.raw_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  ") " +
+                  "ORDER BY t.transaction_date ASC, t.id ASC", nativeQuery = true)
+      List<BankTransaction> searchByKeyword(Long documentId, String keyword);
+
+      // Custom Keyword Exclude: Mass update is_excluded berdasarkan keyword
+      @org.springframework.data.jpa.repository.Modifying
+      @Query(value = "UPDATE bank_transaction SET is_excluded = :isExcluded " +
+                  "WHERE document_id = :documentId " +
+                  "AND (" +
+                  "    LOWER(counterparty_name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(raw_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  ")", nativeQuery = true)
+      void updateIsExcludedByKeyword(Long documentId, String keyword, Boolean isExcluded);
+
+      // Versi Aman untuk "Include Kembali": Hanya update data yang kategorinya TRANSFER dan bukan anomali
+      @org.springframework.data.jpa.repository.Modifying
+      @Query(value = "UPDATE bank_transaction SET is_excluded = 0 " +
+                  "WHERE document_id = :documentId " +
+                  "AND category = 'TRANSFER' AND is_anomaly = 0 " +
+                  "AND (" +
+                  "    LOWER(counterparty_name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(raw_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  ")", nativeQuery = true)
+      void updateIsExcludedByKeywordSafeInclude(Long documentId, String keyword);
 }

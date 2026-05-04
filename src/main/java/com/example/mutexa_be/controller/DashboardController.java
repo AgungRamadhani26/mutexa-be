@@ -2,6 +2,7 @@ package com.example.mutexa_be.controller;
 
 import com.example.mutexa_be.base.ApiResponse;
 import com.example.mutexa_be.dto.request.MassExcludeRequest;
+import com.example.mutexa_be.dto.request.KeywordExcludeRequest;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
 import com.example.mutexa_be.dto.response.RingkasanSaldoResponse;
 import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
@@ -313,5 +314,26 @@ public class DashboardController {
       List<DetailTransaksiResponse> data = dashboardService.getAnomalyTransactions(documentId,
             com.example.mutexa_be.entity.enums.MutationType.DB);
       return ResponseUtil.ok(data, "Berhasil mengambil data anomali debit.");
+   }
+
+   /**
+    * Pencarian transaksi berdasarkan keyword (nama afiliasi, no rekening, dsb).
+    */
+   @GetMapping("/search-keyword")
+   public ResponseEntity<ApiResponse<List<DetailTransaksiResponse>>> searchTransactionsByKeyword(
+         @RequestParam Long documentId,
+         @RequestParam String keyword) {
+      List<DetailTransaksiResponse> data = dashboardService.searchTransactionsByKeyword(documentId, keyword);
+      return ResponseUtil.ok(data, "Berhasil mencari transaksi berdasarkan keyword.");
+   }
+
+   /**
+    * Mass toggle exclude/include berdasarkan keyword.
+    */
+   @PostMapping("/mass-toggle-keyword")
+   public ResponseEntity<ApiResponse<String>> massToggleKeywordExclude(@RequestBody KeywordExcludeRequest request) {
+      dashboardService.massToggleKeywordExclude(request.getDocumentId(), request.getKeyword(),
+            request.getIsExcluded());
+      return ResponseUtil.ok("Success", "Berhasil mengubah status exclude transaksi berdasarkan keyword.");
    }
 }
