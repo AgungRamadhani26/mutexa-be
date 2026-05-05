@@ -11,6 +11,10 @@ import java.util.List;
 public interface BankTransactionRepository extends JpaRepository<BankTransaction, Long> {
       boolean existsByDuplicateHash(String duplicateHash);
 
+      @org.springframework.data.jpa.repository.Modifying
+      @Query("DELETE FROM BankTransaction b WHERE b.bankAccount.id = :bankAccountId")
+      void deleteByBankAccountId(Long bankAccountId);
+
       @Query(value = "WITH MonthlyStats AS ( " +
                   "    SELECT " +
                   "        YEAR(t.transaction_date) AS year, " +
@@ -188,12 +192,14 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
                   com.example.mutexa_be.entity.enums.MutationType mutationType, Boolean isExcluded);
 
       // Custom Keyword Exclude: Search transaksi berdasarkan keyword
-      // Menggunakan CAST(... AS NVARCHAR(MAX)) agar aman dengan kolom TEXT di SQL Server
+      // Menggunakan CAST(... AS NVARCHAR(MAX)) agar aman dengan kolom TEXT di SQL
+      // Server
       @Query(value = "SELECT * FROM bank_transaction t " +
                   "WHERE t.document_id = :documentId " +
                   "AND (" +
                   "    LOWER(t.counterparty_name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-                  "    OR LOWER(CAST(t.normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(t.normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                  +
                   "    OR LOWER(CAST(t.raw_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
                   ") " +
                   "ORDER BY t.transaction_date ASC, t.id ASC", nativeQuery = true)
@@ -205,19 +211,22 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
                   "WHERE document_id = :documentId " +
                   "AND (" +
                   "    LOWER(counterparty_name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-                  "    OR LOWER(CAST(normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                  +
                   "    OR LOWER(CAST(raw_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
                   ")", nativeQuery = true)
       void updateIsExcludedByKeyword(Long documentId, String keyword, Boolean isExcluded);
 
-      // Versi Aman untuk "Include Kembali": Hanya update data yang kategorinya TRANSFER dan bukan anomali
+      // Versi Aman untuk "Include Kembali": Hanya update data yang kategorinya
+      // TRANSFER dan bukan anomali
       @org.springframework.data.jpa.repository.Modifying
       @Query(value = "UPDATE bank_transaction SET is_excluded = 0 " +
                   "WHERE document_id = :documentId " +
                   "AND category = 'TRANSFER' AND is_anomaly = 0 " +
                   "AND (" +
                   "    LOWER(counterparty_name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-                  "    OR LOWER(CAST(normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+                  "    OR LOWER(CAST(normalized_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+                  +
                   "    OR LOWER(CAST(raw_description AS NVARCHAR(MAX))) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
                   ")", nativeQuery = true)
       void updateIsExcludedByKeywordSafeInclude(Long documentId, String keyword);

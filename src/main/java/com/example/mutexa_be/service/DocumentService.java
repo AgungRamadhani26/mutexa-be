@@ -107,6 +107,13 @@ public class DocumentService {
    public void deleteAccount(Long accountId) {
       BankAccount account = bankAccountRepository.findById(accountId)
             .orElseThrow(() -> new IllegalArgumentException("Rekening tidak ditemukan: " + accountId));
+            
+      // Hapus semua transaksi yang terkait dengan rekening ini terlebih dahulu
+      // agar tidak terjadi Foreign Key Constraint Violation
+      bankTransactionRepository.deleteByBankAccountId(accountId);
+      
+      // Setelah transaksi terhapus, kita bisa menghapus rekening.
+      // Dokumen akan ikut terhapus secara otomatis karena CascadeType.ALL
       bankAccountRepository.delete(account);
       log.info("Rekening ID {} beserta semua dokumen & transaksinya berhasil dihapus.", accountId);
    }
