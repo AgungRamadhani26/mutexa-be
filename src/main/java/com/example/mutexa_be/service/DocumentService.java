@@ -99,6 +99,18 @@ public class DocumentService {
             .build()).collect(Collectors.toList());
    }
 
+   /**
+    * Menghapus rekening bank beserta seluruh dokumen dan transaksi yang terkait.
+    * Cascade delete dilakukan otomatis oleh JPA (CascadeType.ALL).
+    * Hanya boleh dipanggil oleh ADMIN.
+    */
+   public void deleteAccount(Long accountId) {
+      BankAccount account = bankAccountRepository.findById(accountId)
+            .orElseThrow(() -> new IllegalArgumentException("Rekening tidak ditemukan: " + accountId));
+      bankAccountRepository.delete(account);
+      log.info("Rekening ID {} beserta semua dokumen & transaksinya berhasil dihapus.", accountId);
+   }
+
    // ==========================================
    // PROSES UPLOAD DOKUMEN (Command/Write)
    // ==========================================

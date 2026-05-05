@@ -6,7 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.List;
 
 @Entity
 @Table(name = "bank_account", uniqueConstraints = {
@@ -35,6 +35,10 @@ public class BankAccount {
    // Nama dari bank yang menerbitkan rekening (Misal: BCA, Mandiri)
    @Column(name = "bank_name", nullable = false)
    private String bankName;
+
+   // Cascade delete: jika BankAccount dihapus, semua dokumennya ikut terhapus
+   @OneToMany(mappedBy = "bankAccount", cascade = CascadeType.ALL, orphanRemoval = true)
+   private List<MutationDocument> documents;
 
    // Tanggal & waktu pencatatan data ke tabel secara otomatis (hanya saat insert)
    @CreationTimestamp

@@ -8,9 +8,11 @@ import com.example.mutexa_be.dto.response.DocumentListResponse;
 import com.example.mutexa_be.entity.MutationDocument;
 import com.example.mutexa_be.service.DocumentService;
 import com.example.mutexa_be.util.ResponseUtil;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -62,5 +64,18 @@ public class DocumentController {
 
       return ResponseUtil.created(responseDto,
             "Dokumen " + responseDto.getFileName() + " berhasil diupload dan sedang diproses.");
+   }
+
+   /**
+    * Endpoint hapus rekening bank — hanya ADMIN.
+    * Menghapus rekening beserta semua dokumen & transaksi yang terkait (cascade).
+    */
+   @Transactional
+   @DeleteMapping("/account/{accountId}")
+   @PreAuthorize("hasRole('ADMIN')")
+   public ResponseEntity<ApiResponse<String>> deleteAccount(@PathVariable Long accountId) {
+      documentService.deleteAccount(accountId);
+      return ResponseUtil.ok("Rekening ID " + accountId + " berhasil dihapus.",
+            "Rekening dan seluruh data terkaitnya telah dihapus secara permanen.");
    }
 }
