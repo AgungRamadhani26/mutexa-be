@@ -3,6 +3,7 @@ package com.example.mutexa_be.controller;
 import com.example.mutexa_be.base.ApiResponse;
 import com.example.mutexa_be.dto.request.LoginRequest;
 import com.example.mutexa_be.dto.request.RegisterUserRequest;
+import com.example.mutexa_be.dto.request.UpdateUserRequest;
 import com.example.mutexa_be.dto.response.AuthResponse;
 import com.example.mutexa_be.dto.response.UserResponse;
 import com.example.mutexa_be.service.AuthService;
@@ -60,12 +61,11 @@ public class AuthController {
       return ResponseUtil.ok(userService.activateUser(id), "User berhasil diaktifkan.");
    }
 
-   /** Reset password — hanya ADMIN */
-   @PatchMapping("/users/{id}/reset-password")
+   /** Edit user — hanya ADMIN */
+   @PutMapping("/users/{id}")
    @PreAuthorize("hasRole('ADMIN')")
-   public ResponseEntity<ApiResponse<UserResponse>> resetPassword(@PathVariable Long id,
-         @RequestBody Map<String, String> body) {
-      String newPassword = body.get("newPassword");
-      return ResponseUtil.ok(userService.resetPassword(id, newPassword), "Password berhasil direset.");
+   public ResponseEntity<ApiResponse<UserResponse>> updateUser(@PathVariable Long id,
+         @RequestBody UpdateUserRequest request) {
+      return ResponseUtil.ok(userService.updateUser(id, request), "Data user berhasil diperbarui.");
    }
 }

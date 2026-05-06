@@ -37,12 +37,17 @@ public class UserService {
 
    private void validatePassword(String password) {
       java.util.List<String> errors = new java.util.ArrayList<>();
-      if (password == null || password.length() < 8) errors.add("minimal 8 karakter");
-      if (password == null || !password.matches(".*[A-Z].*")) errors.add("huruf besar");
-      if (password == null || !password.matches(".*[a-z].*")) errors.add("huruf kecil");
-      if (password == null || !password.matches(".*\\d.*")) errors.add("angka");
-      if (password == null || !password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) errors.add("karakter khusus");
-      
+      if (password == null || password.length() < 8)
+         errors.add("minimal 8 karakter");
+      if (password == null || !password.matches(".*[A-Z].*"))
+         errors.add("huruf besar");
+      if (password == null || !password.matches(".*[a-z].*"))
+         errors.add("huruf kecil");
+      if (password == null || !password.matches(".*\\d.*"))
+         errors.add("angka");
+      if (password == null || !password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"))
+         errors.add("karakter khusus");
+
       if (!errors.isEmpty()) {
          throw new IllegalArgumentException("Password harus: " + String.join(", ", errors) + ".");
       }
@@ -55,7 +60,7 @@ public class UserService {
       if (request.getRole() == null || request.getRole().trim().isEmpty()) {
          throw new IllegalArgumentException("Role tidak boleh kosong.");
       }
-      
+
       validateEmail(request.getEmail());
       validatePassword(request.getPassword());
 
@@ -88,13 +93,36 @@ public class UserService {
       return UserResponse.fromEntity(userRepository.save(user));
    }
 
-   public UserResponse resetPassword(Long userId, String newPassword) {
+   public UserResponse updateUser(Long userId, com.example.mutexa_be.dto.request.UpdateUserRequest request) {
       User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan: " + userId));
-            
-      validatePassword(newPassword);
-      
-      user.setPassword(passwordEncoder.encode(newPassword));
+
+      if (request.getName() == null || request.getName().trim().isEmpty()) {
+         throw new IllegalArgumentException("Nama lengkap tidak boleh kosong.");
+      }
+      if (request.getRole() == null || request.getRole().trim().isEmpty()) {
+         throw new IllegalArgumentException("Role tidak boleh kosong.");
+      }
+      validateEmail(request.getEmail());
+
+      // Cek apakah email diubah dan apakah email baru sudah terdaftar
+      String newEmail = request.getEmail().trim();
+      if (!user.getEmail().equalsIgnoreCase(newEmail)) {
+         if (userRepository.existsByEmail(newEmail)) {
+            throw new IllegalArgumentException("Email sudah terdaftar: " + newEmail);
+         }
+         user.setEmail(newEmail);
+      }
+
+      user.setName(request.getName().trim());
+      user.setRole(UserRole.valueOf(request.getRole()));
+
+      // Update password jika diisi (tidak kosong)
+      if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+         validatePassword(request.getPassword());
+         user.setPassword(passwordEncoder.encode(request.getPassword()));
+      }
+
       return UserResponse.fromEntity(userRepository.save(user));
    }
 }
