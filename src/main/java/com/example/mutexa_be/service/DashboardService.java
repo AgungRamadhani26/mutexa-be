@@ -94,71 +94,12 @@ public class DashboardService {
          }
       }
 
-      // Hitung Average Daily Balance (ADB) - Selalu data Asli sesuai feedback user
-      BigDecimal avgDailyBalance = BigDecimal.ZERO;
-      List<BankTransaction> txs = bankTransactionRepository
-            .findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
-
-      if (!txs.isEmpty()) {
-         // Tentukan rentang kalender: 1st of first month s/d End of last month
-         LocalDate firstTxDate = txs.get(0).getTransactionDate();
-         LocalDate lastTxDate = txs.get(txs.size() - 1).getTransactionDate();
-
-         LocalDate startDate = YearMonth.from(firstTxDate).atDay(1);
-         LocalDate endDate = YearMonth.from(lastTxDate).atEndOfMonth();
-
-         // Hitung saldo awal (Opening Balance) persis sebelum transaksi pertama
-         // dieksekusi
-         BankTransaction firstTx = txs.get(0);
-         BigDecimal openingBalance = firstTx.getBalance() != null ? firstTx.getBalance() : BigDecimal.ZERO;
-         if (firstTx.getBalance() != null && firstTx.getAmount() != null) {
-            if (firstTx.getMutationType() == com.example.mutexa_be.entity.enums.MutationType.CR) {
-               openingBalance = firstTx.getBalance().subtract(firstTx.getAmount());
-            } else {
-               openingBalance = firstTx.getBalance().add(firstTx.getAmount());
-            }
-         }
-
-         // Map berisi tanggal -> Saldo Terakhir pada tanggal tersebut
-         Map<LocalDate, BigDecimal> dailyBalances = new HashMap<>();
-         for (BankTransaction tx : txs) {
-            if (tx.getBalance() != null) {
-               dailyBalances.put(tx.getTransactionDate(), tx.getBalance());
-            }
-         }
-
-         BigDecimal runningSum = BigDecimal.ZERO;
-         long totalDays = 0;
-         BigDecimal currentBalance = openingBalance;
-
-         // Looping per hari secara berurutan
-         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            if (date.isBefore(firstTxDate)) {
-               // Belum ada transaksi, pakai saldo awal
-            } else {
-               // Jika ada record saldo di tanggal tersebut, update currentBalance
-               if (dailyBalances.containsKey(date)) {
-                  currentBalance = dailyBalances.get(date);
-               }
-               // Jika tidak ada di map, currentBalance akan menggunakan nilai hari sebelumnya
-               // (gap-fill)
-            }
-            runningSum = runningSum.add(currentBalance);
-            totalDays++;
-         }
-
-         if (totalDays > 0) {
-            avgDailyBalance = runningSum.divide(BigDecimal.valueOf(totalDays), 2, java.math.RoundingMode.HALF_UP);
-         }
-      }
-
       return RingkasanSaldoResponse.builder()
             .totalCredit(totalCredit)
             .totalDebit(totalDebit)
             .avgCredit(avgCredit)
             .avgDebit(avgDebit)
             .jumlahBulan(jumlahBulan)
-            .avgDailyBalance(avgDailyBalance)
             .cleanedTotalCredit(cleanedTotalCredit)
             .cleanedTotalDebit(cleanedTotalDebit)
             .cleanedAvgCredit(cleanedAvgCredit)
@@ -397,7 +338,8 @@ public class DashboardService {
          // Jika Exclude (Sembunyikan): Hajar semua yang cocok
          bankTransactionRepository.updateIsExcludedByKeyword(documentId, keyword.trim(), true);
       } else {
-         // Jika Include (Tampilkan Kembali): Pakai mode aman agar Admin/Tax/Anomali tidak bocor
+         // Jika Include (Tampilkan Kembali): Pakai mode aman agar Admin/Tax/Anomali
+         // tidak bocor
          bankTransactionRepository.updateIsExcludedByKeywordSafeInclude(documentId, keyword.trim());
       }
    }
