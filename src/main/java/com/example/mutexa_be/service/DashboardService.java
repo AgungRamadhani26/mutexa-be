@@ -1,23 +1,25 @@
 package com.example.mutexa_be.service;
 
 import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
+import com.example.mutexa_be.dto.response.PengendapanBulanResponse;
+import com.example.mutexa_be.dto.response.PengendapanResponse;
+import com.example.mutexa_be.dto.response.PengendapanRowResponse;
 import com.example.mutexa_be.dto.response.RingkasanSaldoResponse;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
 import com.example.mutexa_be.entity.BankTransaction;
+import com.example.mutexa_be.entity.enums.MutationType;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Month;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Locale;
+import java.util.*;
 import java.util.stream.Collectors;
 import com.example.mutexa_be.dto.response.TopFreqResponse;
 
@@ -341,6 +343,148 @@ public class DashboardService {
          // Jika Include (Tampilkan Kembali): Pakai mode aman agar Admin/Tax/Anomali
          // tidak bocor
          bankTransactionRepository.updateIsExcludedByKeywordSafeInclude(documentId, keyword.trim());
+      }
+   }
+
+   /**
+    * Menghitung data Pengendapan (settlement) per bulan.
+    *
+    * Aturan:
+    * 1. Saldo baris pertama bulan pertama = Opening Balance (reverse dari tx pertama)
+    * 2. Saldo baris pertama bulan ke-2+ = Closing Balance hari terakhir bulan sebelumnya
+    * 3. Saldo baris lainnya = Closing Balance tanggal transaksi sebelumnya
+    * 4. Hari baris pertama = tanggal transaksi itu sendiri
+    * 5. Hari baris lainnya = tanggal sekarang - tanggal sebelumnya
+    * 6. Pengendapan = Saldo x Hari
+    */
+   public PengendapanResponse getPengendapan(Long documentId) {
+      List<BankTransaction> allTransactions = bankTransactionRepository
+            .findAllByMutationDocumentIdOrderByTransactionDateAscIdAsc(documentId);
+
+      if (allTransactions.isEmpty()) {
+         return PengendapanResponse.builder()
+               .bulanList(Collections.emptyList())
+               .rataRataPengendapan(BigDecimal.ZERO)
+               .build();
+      }
+
+      // Group transaksi berdasarkan YearMonth, LinkedHashMap agar urut
+      Map<YearMonth, List<BankTransaction>> groupedByMonth = allTransactions.stream()
+            .collect(Collectors.groupingBy(
+                  tx -> YearMonth.from(tx.getTransactionDate()),
+                  LinkedHashMap::new,
+                  Collectors.toList()));
+
+      List<PengendapanBulanResponse> bulanList = new ArrayList<>();
+      BigDecimal prevMonthClosingBalance = null;
+
+      for (Map.Entry<YearMonth, List<BankTransaction>> entry : groupedByMonth.entrySet()) {
+         YearMonth ym = entry.getKey();
+         List<BankTransaction> monthTransactions = entry.getValue();
+
+         String monthName = ym.getMonth().getDisplayName(TextStyle.FULL, new Locale("id", "ID"));
+         String periode = monthName + " " + ym.getYear();
+
+         // Group transaksi per tanggal unik
+         Map<LocalDate, List<BankTransaction>> groupedByDate = monthTransactions.stream()
+               .collect(Collectors.groupingBy(
+                     BankTransaction::getTransactionDate,
+                     LinkedHashMap::new,
+                     Collectors.toList()));
+
+         List<LocalDate> uniqueDates = new ArrayList<>(groupedByDate.keySet());
+         List<PengendapanRowResponse> rows = new ArrayList<>();
+
+         for (int i = 0; i < uniqueDates.size(); i++) {
+            LocalDate currentDate = uniqueDates.get(i);
+            int dayOfMonth = currentDate.getDayOfMonth();
+
+            BigDecimal saldo;
+            int hari;
+
+            if (i == 0) {
+               // Baris pertama bulan ini
+               hari = dayOfMonth;
+
+               if (prevMonthClosingBalance != null) {
+                  saldo = prevMonthClosingBalance;
+               } else {
+                  // Bulan pertama: reverse dari tx pertama
+                  BankTransaction firstTx = groupedByDate.get(currentDate).get(0);
+                  saldo = calculateOpeningBalance(firstTx);
+               }
+            } else {
+               LocalDate prevDate = uniqueDates.get(i - 1);
+               hari = dayOfMonth - prevDate.getDayOfMonth();
+
+               // Saldo = closing balance tanggal sebelumnya
+               List<BankTransaction> prevDayTxs = groupedByDate.get(prevDate);
+               BankTransaction lastTxPrevDay = prevDayTxs.get(prevDayTxs.size() - 1);
+               saldo = lastTxPrevDay.getBalance() != null ? lastTxPrevDay.getBalance() : BigDecimal.ZERO;
+            }
+
+            BigDecimal pengendapan = saldo.multiply(BigDecimal.valueOf(hari));
+
+            rows.add(PengendapanRowResponse.builder()
+                  .tanggal(dayOfMonth)
+                  .saldo(saldo)
+                  .hari(hari)
+                  .pengendapan(pengendapan)
+                  .build());
+         }
+
+         int totalHari = rows.stream().mapToInt(PengendapanRowResponse::getHari).sum();
+         BigDecimal totalPengendapan = rows.stream()
+               .map(PengendapanRowResponse::getPengendapan)
+               .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+         BigDecimal pengendapanPerBulan = totalHari > 0
+               ? totalPengendapan.divide(BigDecimal.valueOf(totalHari), 4, RoundingMode.HALF_UP)
+               : BigDecimal.ZERO;
+
+         bulanList.add(PengendapanBulanResponse.builder()
+               .periode(periode)
+               .rows(rows)
+               .totalHari(totalHari)
+               .totalPengendapan(totalPengendapan)
+               .pengendapanPerBulan(pengendapanPerBulan)
+               .build());
+
+         // Simpan closing balance hari terakhir bulan ini untuk bulan berikutnya
+         LocalDate lastDate = uniqueDates.get(uniqueDates.size() - 1);
+         List<BankTransaction> lastDayTxs = groupedByDate.get(lastDate);
+         prevMonthClosingBalance = lastDayTxs.get(lastDayTxs.size() - 1).getBalance();
+      }
+
+      // Rata-rata Pengendapan dari semua bulan
+      BigDecimal rataRata = BigDecimal.ZERO;
+      if (!bulanList.isEmpty()) {
+         BigDecimal sumPengendapanPerBulan = bulanList.stream()
+               .map(PengendapanBulanResponse::getPengendapanPerBulan)
+               .reduce(BigDecimal.ZERO, BigDecimal::add);
+         rataRata = sumPengendapanPerBulan.divide(
+               BigDecimal.valueOf(bulanList.size()), 4, RoundingMode.HALF_UP);
+      }
+
+      return PengendapanResponse.builder()
+            .bulanList(bulanList)
+            .rataRataPengendapan(rataRata)
+            .build();
+   }
+
+   /**
+    * Menghitung Opening Balance dari transaksi pertama.
+    * Jika Debit: OB = balance + amount (debit mengurangi saldo)
+    * Jika Credit: OB = balance - amount (credit menambah saldo)
+    */
+   private BigDecimal calculateOpeningBalance(BankTransaction firstTx) {
+      BigDecimal balance = firstTx.getBalance() != null ? firstTx.getBalance() : BigDecimal.ZERO;
+      BigDecimal amount = firstTx.getAmount() != null ? firstTx.getAmount() : BigDecimal.ZERO;
+
+      if (firstTx.getMutationType() == MutationType.DB) {
+         return balance.add(amount);
+      } else {
+         return balance.subtract(amount);
       }
    }
 }

@@ -6,6 +6,7 @@ import com.example.mutexa_be.dto.request.KeywordExcludeRequest;
 import com.example.mutexa_be.dto.response.SummaryPerbulanResponse;
 import com.example.mutexa_be.dto.response.RingkasanSaldoResponse;
 import com.example.mutexa_be.dto.response.DetailTransaksiResponse;
+import com.example.mutexa_be.dto.response.PengendapanResponse;
 import com.example.mutexa_be.service.DashboardService;
 import com.example.mutexa_be.service.ExcelExportService;
 import com.example.mutexa_be.util.ResponseUtil;
@@ -335,5 +336,14 @@ public class DashboardController {
       dashboardService.massToggleKeywordExclude(request.getDocumentId(), request.getKeyword(),
             request.getIsExcluded());
       return ResponseUtil.ok("Success", "Berhasil mengubah status exclude transaksi berdasarkan keyword.");
+   }
+
+   /**
+    * Endpoint untuk menghitung data Pengendapan per bulan.
+    */
+   @GetMapping("/pengendapan")
+   public ResponseEntity<ApiResponse<PengendapanResponse>> getPengendapan(@RequestParam Long documentId) {
+      PengendapanResponse data = dashboardService.getPengendapan(documentId);
+      return ResponseUtil.ok(data, "Berhasil mengambil data pengendapan.");
    }
 }
