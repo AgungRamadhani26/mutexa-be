@@ -350,8 +350,10 @@ public class DashboardService {
     * Menghitung data Pengendapan (settlement) per bulan.
     *
     * Aturan:
-    * 1. Saldo baris pertama bulan pertama = Opening Balance (reverse dari tx pertama)
-    * 2. Saldo baris pertama bulan ke-2+ = Closing Balance hari terakhir bulan sebelumnya
+    * 1. Saldo baris pertama bulan pertama = Opening Balance (reverse dari tx
+    * pertama)
+    * 2. Saldo baris pertama bulan ke-2+ = Closing Balance hari terakhir bulan
+    * sebelumnya
     * 3. Saldo baris lainnya = Closing Balance tanggal transaksi sebelumnya
     * 4. Hari baris pertama = tanggal transaksi itu sendiri
     * 5. Hari baris lainnya = tanggal sekarang - tanggal sebelumnya
@@ -423,13 +425,22 @@ public class DashboardService {
                saldo = lastTxPrevDay.getBalance() != null ? lastTxPrevDay.getBalance() : BigDecimal.ZERO;
             }
 
-            BigDecimal pengendapan = saldo.multiply(BigDecimal.valueOf(hari));
+            BigDecimal total = saldo.multiply(BigDecimal.valueOf(hari));
+            BigDecimal rowPengendapan = BigDecimal.ZERO;
+            BigDecimal rowPemakaian = BigDecimal.ZERO;
+
+            if (saldo.compareTo(BigDecimal.ZERO) >= 0) {
+               rowPengendapan = total;
+            } else {
+               rowPemakaian = total; // Biarkan negatif sesuai Excel
+            }
 
             rows.add(PengendapanRowResponse.builder()
                   .tanggal(dayOfMonth)
                   .saldo(saldo)
                   .hari(hari)
-                  .pengendapan(pengendapan)
+                  .pengendapan(rowPengendapan)
+                  .pemakaian(rowPemakaian)
                   .build());
          }
 
@@ -437,9 +448,15 @@ public class DashboardService {
          BigDecimal totalPengendapan = rows.stream()
                .map(PengendapanRowResponse::getPengendapan)
                .reduce(BigDecimal.ZERO, BigDecimal::add);
+         BigDecimal totalPemakaian = rows.stream()
+               .map(PengendapanRowResponse::getPemakaian)
+               .reduce(BigDecimal.ZERO, BigDecimal::add);
 
          BigDecimal pengendapanPerBulan = totalHari > 0
                ? totalPengendapan.divide(BigDecimal.valueOf(totalHari), 4, RoundingMode.HALF_UP)
+               : BigDecimal.ZERO;
+         BigDecimal pemakaianPerBulan = totalHari > 0
+               ? totalPemakaian.divide(BigDecimal.valueOf(totalHari), 4, RoundingMode.HALF_UP)
                : BigDecimal.ZERO;
 
          bulanList.add(PengendapanBulanResponse.builder()
@@ -447,7 +464,9 @@ public class DashboardService {
                .rows(rows)
                .totalHari(totalHari)
                .totalPengendapan(totalPengendapan)
+               .totalPemakaian(totalPemakaian)
                .pengendapanPerBulan(pengendapanPerBulan)
+               .pemakaianPerBulan(pemakaianPerBulan)
                .build());
 
          // Simpan closing balance hari terakhir bulan ini untuk bulan berikutnya
@@ -456,19 +475,28 @@ public class DashboardService {
          prevMonthClosingBalance = lastDayTxs.get(lastDayTxs.size() - 1).getBalance();
       }
 
-      // Rata-rata Pengendapan dari semua bulan
-      BigDecimal rataRata = BigDecimal.ZERO;
+      // Rata-rata dari semua bulan
+      BigDecimal rataRataPengendapan = BigDecimal.ZERO;
+      BigDecimal rataRataPemakaian = BigDecimal.ZERO;
+
       if (!bulanList.isEmpty()) {
          BigDecimal sumPengendapanPerBulan = bulanList.stream()
                .map(PengendapanBulanResponse::getPengendapanPerBulan)
                .reduce(BigDecimal.ZERO, BigDecimal::add);
-         rataRata = sumPengendapanPerBulan.divide(
+         BigDecimal sumPemakaianPerBulan = bulanList.stream()
+               .map(PengendapanBulanResponse::getPemakaianPerBulan)
+               .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+         rataRataPengendapan = sumPengendapanPerBulan.divide(
+               BigDecimal.valueOf(bulanList.size()), 4, RoundingMode.HALF_UP);
+         rataRataPemakaian = sumPemakaianPerBulan.divide(
                BigDecimal.valueOf(bulanList.size()), 4, RoundingMode.HALF_UP);
       }
 
       return PengendapanResponse.builder()
             .bulanList(bulanList)
-            .rataRataPengendapan(rataRata)
+            .rataRataPengendapan(rataRataPengendapan)
+            .rataRataPemakaian(rataRataPemakaian)
             .build();
    }
 

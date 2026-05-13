@@ -18,5 +18,6 @@ public class PengendapanRowResponse {
    private Integer tanggal;         // Tanggal dalam bulan (1-31)
    private BigDecimal saldo;        // Saldo yang mengendap
    private Integer hari;            // Jumlah hari mengendap
-   private BigDecimal pengendapan;  // saldo × hari
+   private BigDecimal pengendapan;  // saldo × hari (jika saldo >= 0)
+   private BigDecimal pemakaian;    // saldo × hari (jika saldo < 0)
 }

@@ -18,4 +18,5 @@ import java.util.List;
 public class PengendapanResponse {
    private List<PengendapanBulanResponse> bulanList;   // Data per bulan
    private BigDecimal rataRataPengendapan;              // Rata-rata Pengendapan/Bulan dari semua bulan
+   private BigDecimal rataRataPemakaian;                // Rata-rata Pemakaian/Bulan dari semua bulan
 }

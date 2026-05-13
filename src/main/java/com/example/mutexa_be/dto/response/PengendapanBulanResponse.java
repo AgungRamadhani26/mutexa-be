@@ -21,4 +21,6 @@ public class PengendapanBulanResponse {
    private Integer totalHari;                    // SUM(hari)
    private BigDecimal totalPengendapan;          // SUM(pengendapan)
    private BigDecimal pengendapanPerBulan;       // totalPengendapan / totalHari
+   private BigDecimal totalPemakaian;            // SUM(pemakaian)
+   private BigDecimal pemakaianPerBulan;         // totalPemakaian / totalHari
 }
