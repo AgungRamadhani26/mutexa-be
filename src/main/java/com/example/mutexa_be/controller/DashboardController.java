@@ -339,11 +339,49 @@ public class DashboardController {
    }
 
    /**
-    * Endpoint untuk menghitung data Pengendapan per bulan.
+    * Endpoint untuk mengambil data Pengendapan per bulan.
     */
    @GetMapping("/pengendapan")
    public ResponseEntity<ApiResponse<PengendapanResponse>> getPengendapan(@RequestParam Long documentId) {
       PengendapanResponse data = dashboardService.getPengendapan(documentId);
       return ResponseUtil.ok(data, "Berhasil mengambil data pengendapan.");
+   }
+
+   @GetMapping("/export-pengendapan")
+   public ResponseEntity<InputStreamResource> exportPengendapan(
+         @RequestParam Long documentId,
+         @RequestParam(required = false) String accountName) throws IOException {
+      
+      PengendapanResponse data = dashboardService.getPengendapan(documentId);
+      ByteArrayInputStream in = excelExportService.exportPengendapanPemakaianToExcel(data, accountName);
+
+      // Build filename: Pengendapan_Pemakaian_namapemilikrekening_PeriodeTransaksi
+      StringBuilder sb = new StringBuilder("Pengendapan_Pemakaian");
+      if (accountName != null && !accountName.trim().isEmpty()) {
+         sb.append("_").append(accountName.trim().replaceAll("\\s+", ""));
+      }
+      
+      // Add period (e.g., from the first and last month)
+      if (!data.getBulanList().isEmpty()) {
+         String firstPeriode = data.getBulanList().get(0).getPeriode().replaceAll("\\s+", "");
+         String lastPeriode = data.getBulanList().get(data.getBulanList().size() - 1).getPeriode().replaceAll("\\s+", "");
+         if (firstPeriode.equals(lastPeriode)) {
+            sb.append("_").append(firstPeriode);
+         } else {
+            sb.append("_").append(firstPeriode).append("-").append(lastPeriode);
+         }
+      }
+      
+      sb.append(".xlsx");
+      String fileName = sb.toString();
+
+      HttpHeaders headers = new HttpHeaders();
+      headers.add("Content-Disposition", "attachment; filename=" + fileName);
+
+      return ResponseEntity
+            .ok()
+            .headers(headers)
+            .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .body(new InputStreamResource(in));
    }
 }

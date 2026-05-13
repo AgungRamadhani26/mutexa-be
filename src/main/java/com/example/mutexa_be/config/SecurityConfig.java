@@ -52,6 +52,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                   // Endpoint login terbuka untuk siapapun
                   .requestMatchers("/api/auth/login").permitAll()
+                  // Buka akses untuk export agar tidak terkena kendala JWT di browser saat download
+                  .requestMatchers("/api/dashboard/export-excel", "/api/dashboard/export-pengendapan").permitAll()
                   // Semua endpoint lain butuh autentikasi
                   .anyRequest().authenticated())
             // Pasang JWT filter sebelum filter autentikasi default Spring
