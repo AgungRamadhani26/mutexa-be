@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  *
  * PILAR 2 — OUTLIER (Percentage Based)
  * Mendeteksi transaksi dengan nominal yang sangat besar menggunakan
- * dynamic threshold berdasarkan tiering total turnover (3% s.d 20%).
+ * dynamic threshold berdasarkan tiering total turnover (3-Tier: 10%, 15%, 20%).
  * CR dan DB dianalisis TERPISAH karena profil pemasukan vs pengeluaran
  * berbeda secara fundamental.
  *
@@ -381,21 +381,15 @@ public class AnomalyDetectionService {
          if (totalMutasi.compareTo(BigDecimal.ZERO) == 0)
             continue;
 
-         // Tentukan persentase berdasarkan Tiering Total Omzet
-         if (totalMutasi.compareTo(new BigDecimal("30000000000")) >= 0) {
-            // Tier 5: Total >= 30 Miliar -> Syarat Outlier: 3%
-            percentageRequirement = new BigDecimal("0.03");
-         } else if (totalMutasi.compareTo(new BigDecimal("20000000000")) >= 0) {
-            // Tier 4: Total >= 20 Miliar -> Syarat Outlier: 5%
-            percentageRequirement = new BigDecimal("0.05");
-         } else if (totalMutasi.compareTo(new BigDecimal("10000000000")) >= 0) {
-            // Tier 3: Total >= 10 Miliar -> Syarat Outlier: 10%
+         // Tentukan persentase berdasarkan Tiering Total Omzet (3-Tier System)
+         if (totalMutasi.compareTo(new BigDecimal("12000000000")) >= 0) {
+            // Tier 3: Total >= 12 Miliar -> Syarat Outlier: 10%
             percentageRequirement = new BigDecimal("0.10");
-         } else if (totalMutasi.compareTo(new BigDecimal("1000000000")) >= 0) {
-            // Tier 2: Total >= 1 Miliar -> Syarat Outlier: 15%
+         } else if (totalMutasi.compareTo(new BigDecimal("2000000000")) >= 0) {
+            // Tier 2: Total >= 2 Miliar -> Syarat Outlier: 15%
             percentageRequirement = new BigDecimal("0.15");
          } else {
-            // Tier 1: Total < 1 Miliar -> Syarat Outlier: 20%
+            // Tier 1: Total < 2 Miliar -> Syarat Outlier: 20%
             percentageRequirement = new BigDecimal("0.20");
          }
 
