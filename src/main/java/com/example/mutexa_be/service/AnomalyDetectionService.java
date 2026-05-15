@@ -356,10 +356,6 @@ public class AnomalyDetectionService {
             .map(BankTransaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-      // Hitung batas 20%
-      BigDecimal thresholdCredit = totalCredit.multiply(new BigDecimal("0.20"));
-      BigDecimal thresholdDebit = totalDebit.multiply(new BigDecimal("0.20"));
-
       // Batas minimal mutlak untuk dipertimbangkan sebagai outlier (misal: 1 juta
       // Rupiah)
       BigDecimal absoluteMinThreshold = new BigDecimal("1000000");
@@ -368,35 +364,52 @@ public class AnomalyDetectionService {
          if (tx.getAmount() == null)
             continue;
 
-         boolean isOutlier = false;
-         BigDecimal threshold = BigDecimal.ZERO;
          BigDecimal totalMutasi = BigDecimal.ZERO;
+         BigDecimal percentageRequirement = BigDecimal.ZERO;
 
          if (tx.getMutationType() == MutationType.CR) {
-            threshold = thresholdCredit;
             totalMutasi = totalCredit;
-            if (threshold.compareTo(BigDecimal.ZERO) > 0 && tx.getAmount().compareTo(threshold) >= 0
-                  && tx.getAmount().compareTo(absoluteMinThreshold) >= 0) {
-               isOutlier = true;
-            }
          } else if (tx.getMutationType() == MutationType.DB) {
-            threshold = thresholdDebit;
             totalMutasi = totalDebit;
-            if (threshold.compareTo(BigDecimal.ZERO) > 0 && tx.getAmount().compareTo(threshold) >= 0
-                  && tx.getAmount().compareTo(absoluteMinThreshold) >= 0) {
-               isOutlier = true;
-            }
          }
 
-         if (isOutlier) {
+         // Jika tidak ada total mutasi, lewati
+         if (totalMutasi.compareTo(BigDecimal.ZERO) == 0)
+            continue;
+
+         // Tentukan persentase berdasarkan Tiering Total Omzet
+         if (totalMutasi.compareTo(new BigDecimal("20000000000")) >= 0) {
+            // Tier 4: Total >= 20 Miliar -> Syarat Outlier: 5%
+            percentageRequirement = new BigDecimal("0.05");
+         } else if (totalMutasi.compareTo(new BigDecimal("10000000000")) >= 0) {
+            // Tier 3: Total >= 10 Miliar -> Syarat Outlier: 10%
+            percentageRequirement = new BigDecimal("0.10");
+         } else if (totalMutasi.compareTo(new BigDecimal("1000000000")) >= 0) {
+            // Tier 2: Total >= 1 Miliar -> Syarat Outlier: 15%
+            percentageRequirement = new BigDecimal("0.15");
+         } else {
+            // Tier 1: Total < 1 Miliar -> Syarat Outlier: 20%
+            percentageRequirement = new BigDecimal("0.20");
+         }
+
+         // Hitung batas nominal (threshold) dari persentase tiering tersebut
+         BigDecimal threshold = totalMutasi.multiply(percentageRequirement);
+
+         // Cek apakah memenuhi syarat Outlier
+         if (tx.getAmount().compareTo(threshold) >= 0 && tx.getAmount().compareTo(absoluteMinThreshold) >= 0) {
             // Hitung persentase riil transaksi tersebut
             BigDecimal percentage = tx.getAmount().divide(totalMutasi, 4, java.math.RoundingMode.HALF_UP)
                   .multiply(new BigDecimal("100"));
+            BigDecimal reqPercentDisplay = percentageRequirement.multiply(new BigDecimal("100"));
+
             String totalStr = totalMutasi.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
+            String reqStr = reqPercentDisplay.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
+
             appendAnomalyReason(tx,
                   "Outlier Transaksi (Mencapai "
-                        + percentage.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString() + "% dari total "
-                        + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit") + " [Rp " + totalStr + "])");
+                        + percentage.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString()
+                        + "% dari total " + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit")
+                        + " [Rp " + totalStr + "]. Melampaui batas Tier " + reqStr + "%)");
          }
       }
    }
