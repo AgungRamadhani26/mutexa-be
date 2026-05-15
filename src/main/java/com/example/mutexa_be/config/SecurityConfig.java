@@ -17,6 +17,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -56,6 +57,12 @@ public class SecurityConfig {
                   .requestMatchers("/api/dashboard/export-excel", "/api/dashboard/export-pengendapan").permitAll()
                   // Semua endpoint lain butuh autentikasi
                   .anyRequest().authenticated())
+            // Tangani error autentikasi agar merespons dengan 401 (Unauthorized) bukan 403 (Forbidden)
+            .exceptionHandling(exceptions -> exceptions
+                  .authenticationEntryPoint((request, response, authException) -> {
+                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sesi kedaluwarsa atau tidak valid.");
+                  })
+            )
             // Pasang JWT filter sebelum filter autentikasi default Spring
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
