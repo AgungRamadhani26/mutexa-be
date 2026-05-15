@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
  * Service kategorisasi transaksi bank (ADMIN, TAX, INTEREST, TRANSFER).
  * <p>
  * Arsitektur: Three-Phase Categorization Engine
+ * 
  * <pre>
  *   Phase 1: EXACT PATTERN MATCH (Prioritas Tertinggi)
  *            → Pola unik dan tidak ambigu yang langsung menentukan kategori.
@@ -42,111 +43,112 @@ public class CategorizationService {
 
     // --- TAX: Pola Pajak Exact ---
     private static final String[] EXACT_TAX_PATTERNS = {
-            "pajak bunga",           // BCA, Mandiri, BNI, BRI
-            "pajak rekening",        // Mandiri Livin (contoh: "Pajak rekening 80.104,46")
-            "pajak jasa giro",       // BNI, Mandiri (rekening giro)
-            "pajak deposito",        // Semua bank (deposito)
-            "pph bunga",             // BRI, BNI
-            "pph jasa giro",         // BNI
-            "pph deposito",          // Semua bank
-            "pph final",             // Semua bank
-            "pph pasal",             // Semua bank (PPh 21, 23, 4(2))
-            "pph 21", "pph 23",      // Potongan karyawan/vendor
-            "pot pajak",             // Mandiri, BNI ("potongan pajak")
-            "pot. pajak",            // Mandiri (format titik)
-            "potong pajak",          // BRI
-            "potongan pajak",        // BRI, Mandiri
-            "tax on interest",       // UOB (English statement)
-            "withholding tax",       // UOB (English statement)
-            "tax on saving",         // UOB
+            "pajak bunga", // BCA, Mandiri, BNI, BRI
+            "pajak rekening", // Mandiri Livin (contoh: "Pajak rekening 80.104,46")
+            "pajak jasa giro", // BNI, Mandiri (rekening giro)
+            "pajak deposito", // Semua bank (deposito)
+            "pph bunga", // BRI, BNI
+            "pph jasa giro", // BNI
+            "pph deposito", // Semua bank
+            "pph final", // Semua bank
+            "pph pasal", // Semua bank (PPh 21, 23, 4(2))
+            "pph 21", "pph 23", // Potongan karyawan/vendor
+            "pot pajak", // Mandiri, BNI ("potongan pajak")
+            "pot. pajak", // Mandiri (format titik)
+            "potong pajak", // BRI
+            "potongan pajak", // BRI, Mandiri
+            "tax on interest", // UOB (English statement)
+            "withholding tax", // UOB (English statement)
+            "tax on saving", // UOB
     };
 
     // --- INTEREST (CR): Bunga yang DITERIMA (uang masuk) ---
     private static final String[] EXACT_INTEREST_CR_PATTERNS = {
-            "interest credit",       // BCA (giro) — contoh: "INTEREST CREDIT"
-            "interest on deposit",   // UOB (English)
-            "interest on saving",    // UOB (English)
-            "interest on account",   // BRI (English) — contoh: "Interest on Account"
-            "interest saving",       // UOB
-            "bunga tabungan",        // BRI, BNI
-            "bunga deposito",        // Semua bank (deposito)
-            "bunga rekening",        // Mandiri Livin — contoh: "Bunga rekening 81.452,67"
-            "bunga giro",            // BNI, Mandiri
-            "bunga harian",          // Mandiri, BRI
-            "cr bunga",              // BRI (format khusus)
-            "kredit bunga",          // BRI
-            "jasa giro",             // BNI, Mandiri — contoh: "JASA GIRO"
-            "bagi hasil",            // Bank syariah: BSI, Mandiri Syariah
-            "nisbah",                // Bank syariah
-            "imbalan",               // Bank syariah
-            "bonus tabungan",        // Bank syariah (wadiah)
+            "interest credit", // BCA (giro) — contoh: "INTEREST CREDIT"
+            "interest on deposit", // UOB (English)
+            "interest on saving", // UOB (English)
+            "interest on account", // BRI (English) — contoh: "Interest on Account"
+            "interest saving", // UOB
+            "bunga tabungan", // BRI, BNI
+            "bunga deposito", // Semua bank (deposito)
+            "bunga rekening", // Mandiri Livin — contoh: "Bunga rekening 81.452,67"
+            "bunga giro", // BNI, Mandiri
+            "bunga harian", // Mandiri, BRI
+            "cr bunga", // BRI (format khusus)
+            "kredit bunga", // BRI
+            "jasa giro", // BNI, Mandiri — contoh: "JASA GIRO"
+            "bagi hasil", // Bank syariah: BSI, Mandiri Syariah
+            "nisbah", // Bank syariah
+            "imbalan", // Bank syariah
+            "bonus tabungan", // Bank syariah (wadiah)
     };
 
-    // --- INTEREST (DB): Bunga yang DIBAYAR (bunga pinjaman/kredit, uang keluar) ---
+    // --- INTEREST (DB): Bunga yang DIBAYAR (bunga pinjaman/kredit, uang keluar)
+    // ---
     // Ini tetap dikategorikan INTEREST karena substantifnya adalah bunga,
     // bukan biaya administrasi. Penting bagi analis kredit untuk mengetahui
     // beban bunga pinjaman perusahaan.
     private static final String[] EXACT_INTEREST_DB_PATTERNS = {
-            "bunga kredit lokal",    // BCA — contoh: "BUNGA KREDIT LOKAL" (bunga fasilitas kredit)
-            "bunga pinjaman",        // Umum — bunga cicilan kredit
-            "bunga kredit",          // Umum — biaya bunga fasilitas kredit
-            "od int charge",         // BCA/UOB — overdraft interest (bunga cerukan)
+            "bunga kredit lokal", // BCA — contoh: "BUNGA KREDIT LOKAL" (bunga fasilitas kredit)
+            "bunga pinjaman", // Umum — bunga cicilan kredit
+            "bunga kredit", // Umum — biaya bunga fasilitas kredit
+            "od int charge", // BCA/UOB — overdraft interest (bunga cerukan)
     };
 
     // --- ADMIN: Pola Biaya Bank Exact ---
     private static final String[] EXACT_ADMIN_PATTERNS = {
             // === Biaya Administrasi Umum ===
-            "biaya adm",             // BCA, Mandiri, BNI, BRI
-            "biaya admin",           // Umum
-            "biaya administrasi",    // BCA, Mandiri — contoh: "Biaya administrasi kartu debit"
-            "admin fee",             // BRI (English) — contoh: "Admin Fee"
+            "biaya adm", // BCA, Mandiri, BNI, BRI
+            "biaya admin", // Umum
+            "biaya administrasi", // BCA, Mandiri — contoh: "Biaya administrasi kartu debit"
+            "admin fee", // BRI (English) — contoh: "Admin Fee"
             // === Biaya Layanan ===
-            "biaya sms",             // BCA, BRI, Mandiri, BNI
-            "biaya sms banking",     // BRI, BNI
-            "biaya notifikasi",      // Mandiri
-            "biaya cetak",           // BCA, Mandiri
-            "biaya rekening koran",  // Mandiri, BCA
-            "biaya rek koran",       // Mandiri (singkatan)
-            "biaya layanan",         // BNI, Mandiri
-            "biaya buku",            // BRI
-            "biaya kartu",           // BCA, BRI (kartu debit)
-            "biaya atm",             // BCA, BRI, BNI
-            "biaya bulanan atm",     // BRI — contoh: "Biaya Bulanan ATM"
-            "biaya token",           // Mandiri, BNI
+            "biaya sms", // BCA, BRI, Mandiri, BNI
+            "biaya sms banking", // BRI, BNI
+            "biaya notifikasi", // Mandiri
+            "biaya cetak", // BCA, Mandiri
+            "biaya rekening koran", // Mandiri, BCA
+            "biaya rek koran", // Mandiri (singkatan)
+            "biaya layanan", // BNI, Mandiri
+            "biaya buku", // BRI
+            "biaya kartu", // BCA, BRI (kartu debit)
+            "biaya atm", // BCA, BRI, BNI
+            "biaya bulanan atm", // BRI — contoh: "Biaya Bulanan ATM"
+            "biaya token", // Mandiri, BNI
             // === Biaya Transfer ===
-            "biaya transfer",        // Umum — contoh: "Biaya transfer BI Fast", "Biaya transfer ke Bank lain"
-            "biaya trf",             // Umum (singkatan)
-            "biaya trx",             // BCA, Mandiri
-            "biaya transaksi",       // Umum
-            "biaya rtgs",            // Semua bank
-            "biaya kliring",         // Semua bank
-            "biaya skn",             // Semua bank
-            "biaya llg",             // Semua bank
-            "biaya swift",           // UOB, Mandiri
-            "biaya txn",             // BCA (BI-FAST) — contoh: "BIF BIAYA TXN KE"
-            "biaya e-banking",       // BCA
-            "biaya kirim",           // BRI
-            "biaya tolakan",         // BCA — contoh: "ND-BIAYA TOLAKAN"
-            "nd-biaya",              // BCA — prefix untuk biaya reject/tolakan
+            "biaya transfer", // Umum — contoh: "Biaya transfer BI Fast", "Biaya transfer ke Bank lain"
+            "biaya trf", // Umum (singkatan)
+            "biaya trx", // BCA, Mandiri
+            "biaya transaksi", // Umum
+            "biaya rtgs", // Semua bank
+            "biaya kliring", // Semua bank
+            "biaya skn", // Semua bank
+            "biaya llg", // Semua bank
+            "biaya swift", // UOB, Mandiri
+            "biaya txn", // BCA (BI-FAST) — contoh: "BIF BIAYA TXN KE"
+            "biaya e-banking", // BCA
+            "biaya kirim", // BRI
+            "biaya tolakan", // BCA — contoh: "ND-BIAYA TOLAKAN"
+            "nd-biaya", // BCA — prefix untuk biaya reject/tolakan
             // === Biaya Materai & Provisi ===
-            "biaya materai",         // BRI, BNI, Mandiri
-            "biaya meterai",         // Alternatif ejaan
-            "biaya provisi",         // Mandiri, BCA (kredit)
-            "biaya komisi",          // Mandiri
+            "biaya materai", // BRI, BNI, Mandiri
+            "biaya meterai", // Alternatif ejaan
+            "biaya provisi", // Mandiri, BCA (kredit)
+            "biaya komisi", // Mandiri
 
             // === English Admin Terms ===
-            "monthly fee",           // UOB (English)
-            "monthly fee atm",       // BRI (English) — contoh: "Monthly Fee ATM"
-            "maintenance fee",       // UOB
-            "service charge",        // UOB
-            "bank charge",           // UOB
-            "bank charges",          // UOB
-            "card fee",              // UOB
-            "annual fee",            // UOB, BCA
-            "transfer fee",          // Mandiri Kopra — contoh: "Transfer Fee" (baris tersendiri, DB)
+            "monthly fee", // UOB (English)
+            "monthly fee atm", // BRI (English) — contoh: "Monthly Fee ATM"
+            "maintenance fee", // UOB
+            "service charge", // UOB
+            "bank charge", // UOB
+            "bank charges", // UOB
+            "card fee", // UOB
+            "annual fee", // UOB, BCA
+            "transfer fee", // Mandiri Kopra — contoh: "Transfer Fee" (baris tersendiri, DB)
 
-            "mcm fee",               // BCA — Multi Currency Management
-            "mcm adm",               // BCA
+            "mcm fee", // BCA — Multi Currency Management
+            "mcm adm", // BCA
     };
 
     // =====================================================================
@@ -167,26 +169,27 @@ public class CategorizationService {
             // Biaya transfer online / e-banking
             6500.0,
             // Biaya admin bulanan berbagai bank
-            6000.0,     // BRI Simpedes
-            7500.0,     // BNI Taplus Muda
-            8500.0,     // Mandiri — contoh: "Biaya administrasi kartu debit 8.500"
-            10000.0,    // BCA Tahapan Xpresi
-            11000.0,    // BNI Taplus
-            12000.0,    // BRI BritAma
-            12500.0,    // Mandiri Tabungan Rupiah
-            14000.0,    // Mandiri Giro
-            15000.0,    // BCA Tahapan
-            17000.0,    // BCA Tahapan Gold
-            20000.0,    // BCA Gold
+            6000.0, // BRI Simpedes
+            7500.0, // BNI Taplus Muda
+            8500.0, // Mandiri — contoh: "Biaya administrasi kartu debit 8.500"
+            10000.0, // BCA Tahapan Xpresi
+            11000.0, // BNI Taplus
+            12000.0, // BRI BritAma
+            12500.0, // Mandiri Tabungan Rupiah
+            14000.0, // Mandiri Giro
+            15000.0, // BCA Tahapan
+            17000.0, // BCA Tahapan Gold
+            20000.0, // BCA Gold
             // Biaya RTGS
             25000.0, 30000.0, 35000.0,
             // Biaya ADM Giro Besar (BCA Giro)
-            40000.0     // BCA — contoh: "BIAYA ADM 40,000.00 DB"
+            40000.0 // BCA — contoh: "BIAYA ADM 40,000.00 DB"
     );
 
     /**
      * Keyword pendukung untuk Phase 2 (nominal signature).
-     * Salah satu dari keyword ini harus ada agar nominal diakui sebagai biaya admin.
+     * Salah satu dari keyword ini harus ada agar nominal diakui sebagai biaya
+     * admin.
      */
     private static final String[] NOMINAL_SUPPORT_KEYWORDS = {
             "adm", "admin", "biaya", "fee", "charge",
@@ -225,28 +228,27 @@ public class CategorizationService {
     // Regex pattern untuk deteksi transfer manual (compiled untuk performa)
     private static final Pattern VETO_TRANSFER_PATTERN = Pattern.compile(
             "\\b(?:" +
-                    "ke\\s+rek" +            // "ke rekening", "ke rek."
-                    "|dari\\s+rek" +          // "dari rekening"
-                    "|kepada\\s" +            // "kepada NAMA"
-                    "|kpd[:\\s]" +            // "kpd: NAMA" (BRI)
-                    "|daripada\\s" +          // "daripada NAMA" (UOB)
-                    "|untuk[:\\s]" +          // "untuk: NAMA"
-                    "|to[:\\s]" +             // "to: NAMA" (UOB English)
-                    "|from[:\\s]" +           // "from: NAMA" (UOB English)
-                    "|memo[:\\s]" +           // "memo: xxx"
-                    "|ref[:\\s]" +            // "ref: xxx" (referensi user)
-                    "|trsf\\s" +             // "TRSF E-BANKING" (BCA)
+                    "ke\\s+rek" + // "ke rekening", "ke rek."
+                    "|dari\\s+rek" + // "dari rekening"
+                    "|kepada\\s" + // "kepada NAMA"
+                    "|kpd[:\\s]" + // "kpd: NAMA" (BRI)
+                    "|daripada\\s" + // "daripada NAMA" (UOB)
+                    "|untuk[:\\s]" + // "untuk: NAMA"
+                    "|to[:\\s]" + // "to: NAMA" (UOB English)
+                    "|from[:\\s]" + // "from: NAMA" (UOB English)
+                    "|memo[:\\s]" + // "memo: xxx"
+                    "|ref[:\\s]" + // "ref: xxx" (referensi user)
+                    "|trsf\\s" + // "TRSF E-BANKING" (BCA)
                     "|transfer\\s+(?:dr|ke|dari|bi-fast|bi fast)" + // BCA, BRI, Mandiri
-                    "|transfer\\s+dana" +     // UOB — contoh: "TRANSFER DANA"
-                    "|pindah\\s+buku" +       // "PINDAH BUKU" (BCA internal)
-                    "|overbooking" +          // Mandiri internal transfer
-                    "|pinbuk" +               // BRI/Mandiri Kopra — contoh: "PINBUK AHSA"
-                    "|setoran" +              // BCA, Mandiri Kopra — contoh: "SETORAN SALES", "SETORAN 01/12"
-                    "|mcm\\s+inhousetrf" +    // Mandiri Kopra — contoh: "MCM InhouseTrf KE JUI"
-                    "|kliring" +              // Mandiri Kopra — contoh: "Kliring 10187983"
-                    ")" ,
-            Pattern.CASE_INSENSITIVE
-    );
+                    "|transfer\\s+dana" + // UOB — contoh: "TRANSFER DANA"
+                    "|pindah\\s+buku" + // "PINDAH BUKU" (BCA internal)
+                    "|overbooking" + // Mandiri internal transfer
+                    "|pinbuk" + // BRI/Mandiri Kopra — contoh: "PINBUK AHSA"
+                    "|setoran" + // BCA, Mandiri Kopra — contoh: "SETORAN SALES", "SETORAN 01/12"
+                    "|mcm\\s+inhousetrf" + // Mandiri Kopra — contoh: "MCM InhouseTrf KE JUI"
+                    "|kliring" + // Mandiri Kopra — contoh: "Kliring 10187983"
+                    ")",
+            Pattern.CASE_INSENSITIVE);
 
     /**
      * Keyword/pola yang MEMBATALKAN deteksi admin meskipun kata "biaya" ada.
@@ -255,13 +257,12 @@ public class CategorizationService {
      */
     private static final Pattern ANTI_FALSE_ADMIN_PATTERN = Pattern.compile(
             "\\b(?:" +
-                    "setoran\\s+tunai" +      // Setoran tunai (BCA, BRI)
-                    "|penarikan\\s+tunai" +    // Penarikan ATM
-                    "|setor\\s+tunai" +        // Singkatan
-                    "|tarik\\s+tunai" +        // Singkatan
-                    ")" ,
-            Pattern.CASE_INSENSITIVE
-    );
+                    "setoran\\s+tunai" + // Setoran tunai (BCA, BRI)
+                    "|penarikan\\s+tunai" + // Penarikan ATM
+                    "|setor\\s+tunai" + // Singkatan
+                    "|tarik\\s+tunai" + // Singkatan
+                    ")",
+            Pattern.CASE_INSENSITIVE);
 
     // =====================================================================
     // MAIN ENTRY POINT
@@ -287,9 +288,11 @@ public class CategorizationService {
 
         for (BankTransaction tx : transactions) {
             String desc = tx.getNormalizedDescription() != null
-                    ? tx.getNormalizedDescription().toLowerCase() : "";
+                    ? tx.getNormalizedDescription().toLowerCase()
+                    : "";
             String rawDesc = tx.getRawDescription() != null
-                    ? tx.getRawDescription().toLowerCase() : "";
+                    ? tx.getRawDescription().toLowerCase()
+                    : "";
 
             // Gabungkan kedua deskripsi dan normalisasi spasi
             String fullText = (desc + " " + rawDesc).replaceAll("\\s+", " ").trim();
@@ -393,12 +396,14 @@ public class CategorizationService {
             if (ADMIN_NOMINAL_SIGNATURES.contains(amtValue)) {
                 // Cek apakah ada keyword pendukung di deskripsi
                 if (matchesAnyKeyword(fullText, NOMINAL_SUPPORT_KEYWORDS)) {
-                    // Veto check: jika ini sebenarnya transfer manual, jangan kategorikan
-                    if (!VETO_TRANSFER_PATTERN.matcher(fullText).find()) {
-                        log.debug("[CAT] ADMIN (Phase2-NomSig): amt={}, '{}'",
-                                amtValue, truncateLog(fullText));
-                        return TransactionCategory.ADMIN;
-                    }
+                    // Untuk Phase 2, karena nominalnya sudah terjamin khas biaya bank
+                    // (misal 2.500 untuk BI-Fast), kita bisa mem-bypass VETO CHECK.
+                    // Sangat jarang transfer manual memiliki nominal persis biaya bank.
+                    // Ini menyelesaikan masalah false-negative pada BRI dimana
+                    // deskripsi admin BI-Fast sama persis dengan transfer manual.
+                    log.debug("[CAT] ADMIN (Phase2-NomSig): amt={}, '{}'",
+                            amtValue, truncateLog(fullText));
+                    return TransactionCategory.ADMIN;
                 }
             }
         }
@@ -460,7 +465,8 @@ public class CategorizationService {
      * @return true jika frasa ditemukan
      */
     private boolean containsPhrase(String text, String phrase) {
-        if (text == null || text.isBlank() || phrase == null) return false;
+        if (text == null || text.isBlank() || phrase == null)
+            return false;
 
         // Multi-word phrase: gunakan contains (spasi di frasa sudah jadi boundary)
         if (phrase.contains(" ") || phrase.contains(".") || phrase.contains("-")
@@ -483,18 +489,22 @@ public class CategorizationService {
      * @return true jika salah satu keyword ditemukan
      */
     private boolean matchesAnyKeyword(String text, String[] keywords) {
-        if (text == null || text.isBlank()) return false;
+        if (text == null || text.isBlank())
+            return false;
 
         for (String kw : keywords) {
             if (kw.contains(" ") || kw.contains(".") || kw.contains("-")) {
                 // Multi-word / special char: contains match
-                if (text.contains(kw)) return true;
+                if (text.contains(kw))
+                    return true;
             } else if (kw.length() <= 4) {
                 // Short keyword: word boundary match (menghindari false positive)
-                if (text.matches(".*\\b" + Pattern.quote(kw) + "\\b.*")) return true;
+                if (text.matches(".*\\b" + Pattern.quote(kw) + "\\b.*"))
+                    return true;
             } else {
                 // Long keyword: contains match (cukup spesifik)
-                if (text.contains(kw)) return true;
+                if (text.contains(kw))
+                    return true;
             }
         }
         return false;
@@ -504,7 +514,8 @@ public class CategorizationService {
      * Truncate teks untuk log agar tidak terlalu panjang.
      */
     private String truncateLog(String text) {
-        if (text == null) return "";
+        if (text == null)
+            return "";
         return text.length() > 80 ? text.substring(0, 80) + "..." : text;
     }
 }

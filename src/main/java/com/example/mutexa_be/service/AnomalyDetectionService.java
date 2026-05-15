@@ -28,8 +28,8 @@ import java.util.stream.Collectors;
  * Menggunakan dynamic threshold berdasarkan profil turnover nasabah.
  *
  * PILAR 2 — OUTLIER (Percentage Based)
- * Mendeteksi transaksi dengan nominal yang sangat besar, yaitu
- * mencapai atau melebihi 20% dari total mutasi (Credit atau Debit).
+ * Mendeteksi transaksi dengan nominal yang sangat besar menggunakan
+ * dynamic threshold berdasarkan tiering total turnover (3% s.d 20%).
  * CR dan DB dianalisis TERPISAH karena profil pemasukan vs pengeluaran
  * berbeda secara fundamental.
  *
@@ -146,7 +146,7 @@ public class AnomalyDetectionService {
 
       // PILAR 2: Outlier Percentage — nominal ≥ 20% dari total omzet (CR & DB
       // terpisah)
-      detectOutlierPercentage(transferOnly);
+      detectOutlierPercentage(transactions, transferOnly);
 
       // PILAR 3: Pinjaman Bank/Leasing Lain — indikasi kewajiban di lembaga lain
       detectCompetingLenders(transferOnly);
@@ -342,16 +342,20 @@ public class AnomalyDetectionService {
    // ═══════════════════════════════════════════════════════════════════
    //
    // Mendeteksi anomali jika nominal suatu transaksi mencapai atau
-   // melebihi 20% dari total nominal pada tipe mutasi yang sama (CR atau DB).
+   // melebihi persentase tertentu dari total nominal pada tipe mutasi
+   // yang sama (CR atau DB), menggunakan sistem Tiering (3% s.d 20%).
 
-   private void detectOutlierPercentage(List<BankTransaction> transactions) {
-      // Hitung total Credit dan total Debit
-      BigDecimal totalCredit = transactions.stream()
+   private void detectOutlierPercentage(List<BankTransaction> allTransactions,
+         List<BankTransaction> transferCandidates) {
+      // Hitung total Credit dan total Debit dari KESELURUHAN transaksi
+      // (allTransactions)
+      // agar Total Omzet yang dijadikan dasar persentase akurat.
+      BigDecimal totalCredit = allTransactions.stream()
             .filter(t -> t.getMutationType() == MutationType.CR && t.getAmount() != null)
             .map(BankTransaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-      BigDecimal totalDebit = transactions.stream()
+      BigDecimal totalDebit = allTransactions.stream()
             .filter(t -> t.getMutationType() == MutationType.DB && t.getAmount() != null)
             .map(BankTransaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -360,7 +364,7 @@ public class AnomalyDetectionService {
       // Rupiah)
       BigDecimal absoluteMinThreshold = new BigDecimal("1000000");
 
-      for (BankTransaction tx : transactions) {
+      for (BankTransaction tx : transferCandidates) {
          if (tx.getAmount() == null)
             continue;
 
@@ -378,7 +382,10 @@ public class AnomalyDetectionService {
             continue;
 
          // Tentukan persentase berdasarkan Tiering Total Omzet
-         if (totalMutasi.compareTo(new BigDecimal("20000000000")) >= 0) {
+         if (totalMutasi.compareTo(new BigDecimal("30000000000")) >= 0) {
+            // Tier 5: Total >= 30 Miliar -> Syarat Outlier: 3%
+            percentageRequirement = new BigDecimal("0.03");
+         } else if (totalMutasi.compareTo(new BigDecimal("20000000000")) >= 0) {
             // Tier 4: Total >= 20 Miliar -> Syarat Outlier: 5%
             percentageRequirement = new BigDecimal("0.05");
          } else if (totalMutasi.compareTo(new BigDecimal("10000000000")) >= 0) {
