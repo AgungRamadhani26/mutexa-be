@@ -261,6 +261,7 @@ public class CategorizationService {
                     "|penarikan\\s+tunai" + // Penarikan ATM
                     "|setor\\s+tunai" + // Singkatan
                     "|tarik\\s+tunai" + // Singkatan
+                    "|mcm\\s+inhousetrf" + // Mandiri Kopra inhouse transfer
                     ")",
             Pattern.CASE_INSENSITIVE);
 
@@ -377,8 +378,15 @@ public class CategorizationService {
                 if (containsPhrase(fullText, pattern)) {
                     // Anti-false-positive: pastikan bukan setoran/penarikan tunai
                     if (!ANTI_FALSE_ADMIN_PATTERN.matcher(fullText).find()) {
-                        log.debug("[CAT] ADMIN (Phase1-Exact): '{}'", truncateLog(fullText));
-                        return TransactionCategory.ADMIN;
+                        // Pastikan nominal masuk akal untuk biaya admin (mencegah false positive pada
+                        // transfer bernominal besar)
+                        if (isPlausibleAdminFee(fullText, amount)) {
+                            log.debug("[CAT] ADMIN (Phase1-Exact): '{}'", truncateLog(fullText));
+                            return TransactionCategory.ADMIN;
+                        } else {
+                            log.debug("[CAT] SKIPPING ADMIN (Phase1-Exact) karena nominal terlalu besar: amt={}, '{}'",
+                                    amount, truncateLog(fullText));
+                        }
                     }
                 }
             }
@@ -439,8 +447,13 @@ public class CategorizationService {
         if (!isCredit && matchesAnyKeyword(fullText, HIERARCHICAL_ADMIN_KEYWORDS)) {
             // Anti-false-positive: pastikan bukan setoran/penarikan tunai
             if (!ANTI_FALSE_ADMIN_PATTERN.matcher(fullText).find()) {
-                log.debug("[CAT] ADMIN (Phase3-Hierarchical): '{}'", truncateLog(fullText));
-                return TransactionCategory.ADMIN;
+                if (isPlausibleAdminFee(fullText, amount)) {
+                    log.debug("[CAT] ADMIN (Phase3-Hierarchical): '{}'", truncateLog(fullText));
+                    return TransactionCategory.ADMIN;
+                } else {
+                    log.debug("[CAT] SKIPPING ADMIN (Phase3-Hierarchical) karena nominal terlalu besar: amt={}, '{}'",
+                            amount, truncateLog(fullText));
+                }
             }
         }
 
@@ -451,6 +464,35 @@ public class CategorizationService {
     // =====================================================================
     // HELPER METHODS
     // =====================================================================
+
+    /**
+     * Mengecek apakah nominal transaksi masuk akal untuk dikategorikan sebagai
+     * biaya admin.
+     * Secara umum, biaya admin jarang melebihi Rp 1.000.000, kecuali untuk biaya
+     * provisi,
+     * komisi, atau denda/penalti yang persentasenya bisa sangat besar.
+     * Ini mencegah transfer bernominal besar dianggap admin hanya karena
+     * deskripsinya mengandung "biaya".
+     */
+    private boolean isPlausibleAdminFee(String fullText, BigDecimal amount) {
+        if (amount == null)
+            return true;
+
+        // Jika nominal di bawah atau sama dengan 1 juta, masuk akal sebagai biaya admin
+        if (amount.compareTo(new BigDecimal("1000000")) <= 0) {
+            return true;
+        }
+
+        // Jika di atas 1 juta, cek apakah ada keyword pengecualian
+        String[] exceptions = { "provisi", "komisi", "denda", "penalty", "penalti", "pinalty" };
+        for (String ex : exceptions) {
+            if (fullText.contains(ex)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Mengecek apakah teks mengandung frasa EXACT (multi-word).
