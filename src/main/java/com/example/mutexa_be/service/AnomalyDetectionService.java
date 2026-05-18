@@ -27,9 +27,9 @@ import java.util.stream.Collectors;
  * keluar (DB) dalam waktu ≤ 48 jam dengan selisih nominal ≤ 5%.
  * Menggunakan dynamic threshold berdasarkan profil turnover nasabah.
  *
- * PILAR 2 — OUTLIER (Percentage Based)
- * Mendeteksi transaksi dengan nominal yang sangat besar menggunakan
- * dynamic threshold berdasarkan tiering total turnover (3-Tier: 10%, 15%, 20%).
+ * PILAR 2 — OUTLIER (Z-Score Based)
+ * Mendeteksi transaksi dengan nominal yang sangat besar berdasarkan
+ * seberapa jauh nilainya menyimpang dari rata-rata transaksi (Z-Score > 3.0).
  * CR dan DB dianalisis TERPISAH karena profil pemasukan vs pengeluaran
  * berbeda secara fundamental.
  *
@@ -144,9 +144,9 @@ public class AnomalyDetectionService {
       // PILAR 1: Window Dressing — dana numpang lewat ≤ 48 jam
       detectWindowDressing(transferOnly);
 
-      // PILAR 2: Outlier Percentage — nominal ≥ 20% dari total omzet (CR & DB
-      // terpisah)
-      detectOutlierPercentage(transactions, transferOnly);
+      // PILAR 2: Outlier Z-Score — penyimpangan nominal terhadap rata-rata transaksi
+      // nasabah
+      detectOutlierZScore(transactions, transferOnly);
 
       // PILAR 3: Pinjaman Bank/Leasing Lain — indikasi kewajiban di lembaga lain
       detectCompetingLenders(transferOnly);
@@ -338,81 +338,108 @@ public class AnomalyDetectionService {
    }
 
    // ═══════════════════════════════════════════════════════════════════
-   // PILAR 2: DETEKSI OUTLIER DENGAN PERSENTASE
+   // PILAR 2: DETEKSI OUTLIER DENGAN Z-SCORE (Z-INDEX)
    // ═══════════════════════════════════════════════════════════════════
    //
-   // Mendeteksi anomali jika nominal suatu transaksi mencapai atau
-   // melebihi persentase tertentu dari total nominal pada tipe mutasi
-   // yang sama (CR atau DB), menggunakan sistem Tiering (3% s.d 20%).
+   // Mendeteksi anomali berdasarkan seberapa jauh nominal suatu transaksi
+   // menyimpang dari rata-rata (mean) transaksi nasabah.
+   // Z-Score = (X - Mean) / Standar Deviasi
+   // Threshold: Z-Score > 3.0 (dianggap ekstrim secara statistik).
 
-   private void detectOutlierPercentage(List<BankTransaction> allTransactions,
-         List<BankTransaction> transferCandidates) {
-      // Hitung total Credit dan total Debit dari KESELURUHAN transaksi
-      // (allTransactions)
-      // agar Total Omzet yang dijadikan dasar persentase akurat.
-      BigDecimal totalCredit = allTransactions.stream()
+   private void detectOutlierZScore(List<BankTransaction> allTransactions, List<BankTransaction> transferCandidates) {
+      // 1. Kumpulkan semua nilai Credit dan Debit (yang nominalnya tidak null)
+      List<BigDecimal> creditAmounts = allTransactions.stream()
             .filter(t -> t.getMutationType() == MutationType.CR && t.getAmount() != null)
             .map(BankTransaction::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .collect(Collectors.toList());
 
-      BigDecimal totalDebit = allTransactions.stream()
+      List<BigDecimal> debitAmounts = allTransactions.stream()
             .filter(t -> t.getMutationType() == MutationType.DB && t.getAmount() != null)
             .map(BankTransaction::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .collect(Collectors.toList());
 
-      // Batas minimal mutlak untuk dipertimbangkan sebagai outlier (misal: 1 juta
-      // Rupiah)
+      // 2. Hitung statistik untuk Credit
+      BigDecimal creditMean = calculateMean(creditAmounts);
+      BigDecimal creditStdDev = calculateStandardDeviation(creditAmounts, creditMean);
+
+      // 3. Hitung statistik untuk Debit
+      BigDecimal debitMean = calculateMean(debitAmounts);
+      BigDecimal debitStdDev = calculateStandardDeviation(debitAmounts, debitMean);
+
+      // Batas mutlak transaksi yang bisa dipertimbangkan sebagai outlier
       BigDecimal absoluteMinThreshold = new BigDecimal("1000000");
+      BigDecimal zScoreThreshold = new BigDecimal("3.0");
 
       for (BankTransaction tx : transferCandidates) {
          if (tx.getAmount() == null)
             continue;
 
-         BigDecimal totalMutasi = BigDecimal.ZERO;
-         BigDecimal percentageRequirement = BigDecimal.ZERO;
-
-         if (tx.getMutationType() == MutationType.CR) {
-            totalMutasi = totalCredit;
-         } else if (tx.getMutationType() == MutationType.DB) {
-            totalMutasi = totalDebit;
+         BigDecimal amount = tx.getAmount();
+         if (amount.compareTo(absoluteMinThreshold) < 0) {
+            continue; // Skip transaksi kecil
          }
 
-         // Jika tidak ada total mutasi, lewati
-         if (totalMutasi.compareTo(BigDecimal.ZERO) == 0)
+         BigDecimal mean = tx.getMutationType() == MutationType.CR ? creditMean : debitMean;
+         BigDecimal stdDev = tx.getMutationType() == MutationType.CR ? creditStdDev : debitStdDev;
+
+         // Jika standar deviasi 0 (misal cuma ada 1 transaksi atau semua angkanya sama),
+         // kita abaikan
+         if (stdDev.compareTo(BigDecimal.ZERO) == 0) {
             continue;
-
-         // Tentukan persentase berdasarkan Tiering Total Omzet (3-Tier System)
-         if (totalMutasi.compareTo(new BigDecimal("12000000000")) >= 0) {
-            // Tier 3: Total >= 12 Miliar -> Syarat Outlier: 10%
-            percentageRequirement = new BigDecimal("0.10");
-         } else if (totalMutasi.compareTo(new BigDecimal("2000000000")) >= 0) {
-            // Tier 2: Total >= 2 Miliar -> Syarat Outlier: 15%
-            percentageRequirement = new BigDecimal("0.15");
-         } else {
-            // Tier 1: Total < 2 Miliar -> Syarat Outlier: 20%
-            percentageRequirement = new BigDecimal("0.20");
          }
 
-         // Hitung batas nominal (threshold) dari persentase tiering tersebut
-         BigDecimal threshold = totalMutasi.multiply(percentageRequirement);
+         // Z = (X - Mean) / StdDev
+         BigDecimal diff = amount.subtract(mean);
 
-         // Cek apakah memenuhi syarat Outlier
-         if (tx.getAmount().compareTo(threshold) >= 0 && tx.getAmount().compareTo(absoluteMinThreshold) >= 0) {
-            // Hitung persentase riil transaksi tersebut
-            BigDecimal percentage = tx.getAmount().divide(totalMutasi, 4, java.math.RoundingMode.HALF_UP)
-                  .multiply(new BigDecimal("100"));
-            BigDecimal reqPercentDisplay = percentageRequirement.multiply(new BigDecimal("100"));
+         // Z-Score bisa negatif jika di bawah rata-rata, tapi kita hanya peduli outlier
+         // atas (positif)
+         if (diff.compareTo(BigDecimal.ZERO) <= 0) {
+            continue;
+         }
 
-            String totalStr = totalMutasi.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
-            String reqStr = reqPercentDisplay.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
+         BigDecimal zScore = diff.divide(stdDev, 4, java.math.RoundingMode.HALF_UP);
+
+         if (zScore.compareTo(zScoreThreshold) > 0) {
+            String meanStr = mean.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
+            String zScoreStr = zScore.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
 
             appendAnomalyReason(tx,
-                  "Outlier Transaksi (Mencapai "
-                        + percentage.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString()
-                        + "% dari total " + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit")
-                        + " [Rp " + totalStr + "]. Melampaui batas Tier " + reqStr + "%)");
+                  "Outlier Transaksi (Z-Score: " + zScoreStr
+                        + "). Nominal Rp " + amount.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString()
+                        + " menyimpang sangat jauh dari rata-rata "
+                        + (tx.getMutationType() == MutationType.CR ? "Kredit" : "Debit")
+                        + " nasabah [Rp " + meanStr + "].");
          }
       }
+   }
+
+   private BigDecimal calculateMean(List<BigDecimal> amounts) {
+      if (amounts == null || amounts.isEmpty())
+         return BigDecimal.ZERO;
+      BigDecimal sum = amounts.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+      return sum.divide(new BigDecimal(amounts.size()), 4, java.math.RoundingMode.HALF_UP);
+   }
+
+   private BigDecimal calculateStandardDeviation(List<BigDecimal> amounts, BigDecimal mean) {
+      if (amounts == null || amounts.size() < 2)
+         return BigDecimal.ZERO;
+
+      BigDecimal sumOfSquaredDiffs = BigDecimal.ZERO;
+      for (BigDecimal amt : amounts) {
+         BigDecimal diff = amt.subtract(mean);
+         BigDecimal squaredDiff = diff.multiply(diff);
+         sumOfSquaredDiffs = sumOfSquaredDiffs.add(squaredDiff);
+      }
+
+      // Menggunakan deviasi standar populasi (dibagi N) karena kita menganalisis
+      // seluruh data rekening koran (bukan sampel random)
+      BigDecimal variance = sumOfSquaredDiffs.divide(new BigDecimal(amounts.size()), 4, java.math.RoundingMode.HALF_UP);
+
+      // Math.sqrt butuh tipe double
+      double varianceDouble = variance.doubleValue();
+      double stdDevDouble = Math.sqrt(varianceDouble);
+
+      return BigDecimal.valueOf(stdDevDouble);
    }
 
    // ═══════════════════════════════════════════════════════════════════
