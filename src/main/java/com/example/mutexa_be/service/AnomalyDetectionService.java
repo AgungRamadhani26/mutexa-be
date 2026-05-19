@@ -752,9 +752,7 @@ public class AnomalyDetectionService {
       }
 
       for (BankTransaction tx : transactions) {
-         if (tx.getCategory() == TransactionCategory.TRANSFER 
-               && !Boolean.TRUE.equals(tx.getIsAnomaly()) 
-               && !Boolean.TRUE.equals(tx.getIsExcluded())) {
+         if (tx.getCategory() == TransactionCategory.TRANSFER) {
             
             String searchableText = buildSearchableText(tx);
             if (searchableText.isEmpty()) {
@@ -762,12 +760,28 @@ public class AnomalyDetectionService {
             }
 
             for (String keyword : activeKeywords) {
-               String regex = "\\b" + Pattern.quote(keyword.toLowerCase()) + "\\b";
+               String regex;
+                if (keyword.endsWith("*")) {
+                   String cleanKeyword = keyword.substring(0, keyword.length() - 1);
+                   regex = "\\b" + Pattern.quote(cleanKeyword.toLowerCase());
+                } else {
+                   regex = "\\b" + Pattern.quote(keyword.toLowerCase()) + "\\b";
+                }
                Pattern pattern = Pattern.compile(regex);
                if (pattern.matcher(searchableText).find()) {
                   tx.setIsExcluded(true);
-                  tx.setAnomalyReason("Dikecualikan: Mencocokkan parameter '" + keyword.toUpperCase() + "'");
-                  log.info("Transaksi ID {} di-exclude secara dinamis karena cocok dengan kata kunci: '{}'", tx.getId(), keyword);
+                  tx.setIsAnomaly(true);
+                  
+                  String newReason = "Dikecualikan: Mengandung kata dari parameter yang di-exclude yaitu '" + keyword.toUpperCase() + "'";
+                  if (tx.getAnomalyReason() != null && !tx.getAnomalyReason().trim().isEmpty()) {
+                     // Jika sudah ada alasan anomali lain sebelumnya, kita gabungkan agar informasinya lengkap!
+                     tx.setAnomalyReason(tx.getAnomalyReason() + " | " + newReason);
+                  } else {
+                     // Jika belum ada alasan sebelumnya, langsung set alasan exclude ini
+                     tx.setAnomalyReason(newReason);
+                  }
+                  
+                  log.info("Transaksi ID {} di-exclude secara dinamis dan ditandai sebagai anomali khusus karena cocok dengan kata kunci: '{}'", tx.getId(), keyword);
                   break;
                }
             }

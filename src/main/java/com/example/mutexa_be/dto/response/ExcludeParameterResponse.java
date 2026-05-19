@@ -14,4 +14,6 @@ public class ExcludeParameterResponse {
     private ParameterStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime activatedAt;
+    private String createdBy;
+    private String approvedBy;
 }

@@ -43,6 +43,7 @@ public class ExcludeParameterService {
         ExcludeParameter parameter = ExcludeParameter.builder()
                 .keyword(keywordClean)
                 .status(ParameterStatus.PENDING)
+                .createdBy(getCurrentUserEmail())
                 .build();
 
         ExcludeParameter saved = repository.save(parameter);
@@ -61,6 +62,7 @@ public class ExcludeParameterService {
 
         parameter.setStatus(ParameterStatus.ACTIVE);
         parameter.setActivatedAt(LocalDateTime.now());
+        parameter.setApprovedBy(getCurrentUserEmail());
 
         ExcludeParameter updated = repository.save(parameter);
         log.info("Berhasil menyetujui parameter exclude: {}", parameter.getKeyword());
@@ -90,6 +92,14 @@ public class ExcludeParameterService {
                 .collect(Collectors.toList());
     }
 
+    private String getCurrentUserEmail() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            return auth.getName();
+        }
+        return "SYSTEM";
+    }
+
     private ExcludeParameterResponse mapToResponse(ExcludeParameter parameter) {
         return ExcludeParameterResponse.builder()
                 .id(parameter.getId())
@@ -97,6 +107,8 @@ public class ExcludeParameterService {
                 .status(parameter.getStatus())
                 .createdAt(parameter.getCreatedAt())
                 .activatedAt(parameter.getActivatedAt())
+                .createdBy(parameter.getCreatedBy())
+                .approvedBy(parameter.getApprovedBy())
                 .build();
     }
 }

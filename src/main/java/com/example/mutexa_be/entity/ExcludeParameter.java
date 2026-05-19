@@ -33,4 +33,10 @@ public class ExcludeParameter {
 
     @Column(name = "activated_at")
     private LocalDateTime activatedAt;
+
+    @Column(name = "created_by")
+    private String createdBy;
+
+    @Column(name = "approved_by")
+    private String approvedBy;
 }
