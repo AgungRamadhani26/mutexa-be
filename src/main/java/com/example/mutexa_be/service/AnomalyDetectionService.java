@@ -55,7 +55,6 @@ public class AnomalyDetectionService {
 
    private final ExcludeParameterService excludeParameterService;
 
-
    // ═══════════════════════════════════════════════════════════════════
    // DAFTAR NAMA LEMBAGA KEUANGAN UNTUK PILAR 3
    // ═══════════════════════════════════════════════════════════════════
@@ -160,7 +159,7 @@ public class AnomalyDetectionService {
 
       // PILAR AKHIR: Exclude Parameter Dinamis dari Database (Final Sweeper)
       applyDatabaseExcludeParameters(transferOnly);
- 
+
       long totalAnomali = transferOnly.stream()
             .filter(t -> Boolean.TRUE.equals(t.getIsAnomaly()))
             .count();
@@ -738,7 +737,8 @@ public class AnomalyDetectionService {
    }
 
    /**
-    * Fase Penyapu Akhir (Final Sweeper) — Mencari transaksi TRANSFER bersih yang cocok
+    * Fase Penyapu Akhir (Final Sweeper) — Mencari transaksi TRANSFER bersih yang
+    * cocok
     * dengan kata kunci Exclude Parameter berstatus ACTIVE di database.
     * Jika cocok, transaksi ditandai sebagai Excluded (isExcluded = true) dan
     * diberi alasan deskriptif di kolom anomalyReason.
@@ -753,7 +753,7 @@ public class AnomalyDetectionService {
 
       for (BankTransaction tx : transactions) {
          if (tx.getCategory() == TransactionCategory.TRANSFER) {
-            
+
             String searchableText = buildSearchableText(tx);
             if (searchableText.isEmpty()) {
                continue;
@@ -761,27 +761,31 @@ public class AnomalyDetectionService {
 
             for (String keyword : activeKeywords) {
                String regex;
-                if (keyword.endsWith("*")) {
-                   String cleanKeyword = keyword.substring(0, keyword.length() - 1);
-                   regex = "\\b" + Pattern.quote(cleanKeyword.toLowerCase());
-                } else {
-                   regex = "\\b" + Pattern.quote(keyword.toLowerCase()) + "\\b";
-                }
+               if (keyword.endsWith("*")) {
+                  String cleanKeyword = keyword.substring(0, keyword.length() - 1);
+                  regex = "\\b" + Pattern.quote(cleanKeyword.toLowerCase());
+               } else {
+                  regex = "\\b" + Pattern.quote(keyword.toLowerCase()) + "\\b";
+               }
                Pattern pattern = Pattern.compile(regex);
                if (pattern.matcher(searchableText).find()) {
                   tx.setIsExcluded(true);
                   tx.setIsAnomaly(true);
-                  
-                  String newReason = "Dikecualikan: Mengandung kata dari parameter yang di-exclude yaitu '" + keyword.toUpperCase() + "'";
+
+                  String newReason = "Dikecualikan: Mengandung kata dari parameter yang di-exclude yaitu '"
+                        + keyword.toUpperCase() + "'";
                   if (tx.getAnomalyReason() != null && !tx.getAnomalyReason().trim().isEmpty()) {
-                     // Jika sudah ada alasan anomali lain sebelumnya, kita gabungkan agar informasinya lengkap!
+                     // Jika sudah ada alasan anomali lain sebelumnya, kita gabungkan agar
+                     // informasinya lengkap!
                      tx.setAnomalyReason(tx.getAnomalyReason() + " | " + newReason);
                   } else {
                      // Jika belum ada alasan sebelumnya, langsung set alasan exclude ini
                      tx.setAnomalyReason(newReason);
                   }
-                  
-                  log.info("Transaksi ID {} di-exclude secara dinamis dan ditandai sebagai anomali khusus karena cocok dengan kata kunci: '{}'", tx.getId(), keyword);
+
+                  log.info(
+                        "Transaksi ID {} di-exclude secara dinamis dan ditandai sebagai anomali khusus karena cocok dengan kata kunci: '{}'",
+                        tx.getId(), keyword);
                   break;
                }
             }
