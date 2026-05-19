@@ -4,11 +4,14 @@ import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.enums.MutationType;
 import com.example.mutexa_be.entity.enums.TransactionCategory;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import com.example.mutexa_be.service.ExcludeParameterService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -47,7 +50,11 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AnomalyDetectionService {
+
+   private final ExcludeParameterService excludeParameterService;
+
 
    // ═══════════════════════════════════════════════════════════════════
    // DAFTAR NAMA LEMBAGA KEUANGAN UNTUK PILAR 3
@@ -151,6 +158,9 @@ public class AnomalyDetectionService {
       // PILAR 3: Pinjaman Bank/Leasing Lain — indikasi kewajiban di lembaga lain
       detectCompetingLenders(transferOnly);
 
+      // PILAR AKHIR: Exclude Parameter Dinamis dari Database (Final Sweeper)
+      applyDatabaseExcludeParameters(transferOnly);
+ 
       long totalAnomali = transferOnly.stream()
             .filter(t -> Boolean.TRUE.equals(t.getIsAnomaly()))
             .count();
@@ -725,5 +735,43 @@ public class AnomalyDetectionService {
       if (tx.getCounterpartyName() != null)
          sb.append(tx.getCounterpartyName().toLowerCase());
       return sb.toString().trim();
+   }
+
+   /**
+    * Fase Penyapu Akhir (Final Sweeper) — Mencari transaksi TRANSFER bersih yang cocok
+    * dengan kata kunci Exclude Parameter berstatus ACTIVE di database.
+    * Jika cocok, transaksi ditandai sebagai Excluded (isExcluded = true) dan
+    * diberi alasan deskriptif di kolom anomalyReason.
+    */
+   private void applyDatabaseExcludeParameters(List<BankTransaction> transactions) {
+      log.info("Memulai penyapuan akhir (Final Sweeper) dengan Exclude Parameter dari database...");
+      List<String> activeKeywords = excludeParameterService.getActiveKeywords();
+      if (activeKeywords == null || activeKeywords.isEmpty()) {
+         log.info("Tidak ada parameter exclude aktif di database.");
+         return;
+      }
+
+      for (BankTransaction tx : transactions) {
+         if (tx.getCategory() == TransactionCategory.TRANSFER 
+               && !Boolean.TRUE.equals(tx.getIsAnomaly()) 
+               && !Boolean.TRUE.equals(tx.getIsExcluded())) {
+            
+            String searchableText = buildSearchableText(tx);
+            if (searchableText.isEmpty()) {
+               continue;
+            }
+
+            for (String keyword : activeKeywords) {
+               String regex = "\\b" + Pattern.quote(keyword.toLowerCase()) + "\\b";
+               Pattern pattern = Pattern.compile(regex);
+               if (pattern.matcher(searchableText).find()) {
+                  tx.setIsExcluded(true);
+                  tx.setAnomalyReason("Dikecualikan: Mencocokkan parameter '" + keyword.toUpperCase() + "'");
+                  log.info("Transaksi ID {} di-exclude secara dinamis karena cocok dengan kata kunci: '{}'", tx.getId(), keyword);
+                  break;
+               }
+            }
+         }
+      }
    }
 }
