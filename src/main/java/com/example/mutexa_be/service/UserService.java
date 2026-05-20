@@ -125,4 +125,23 @@ public class UserService {
 
       return UserResponse.fromEntity(userRepository.save(user));
    }
+
+   public void changePassword(String email, com.example.mutexa_be.dto.request.ChangePasswordRequest request) {
+      User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("User tidak ditemukan dengan email: " + email));
+
+      if (request.getOldPassword() == null || request.getOldPassword().trim().isEmpty()) {
+         throw new IllegalArgumentException("Password lama wajib diisi.");
+      }
+      if (request.getNewPassword() == null || request.getNewPassword().trim().isEmpty()) {
+         throw new IllegalArgumentException("Password baru wajib diisi.");
+      }
+      if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+         throw new IllegalArgumentException("Password lama yang Anda masukkan salah.");
+      }
+
+      validatePassword(request.getNewPassword());
+      user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+      userRepository.save(user);
+   }
 }

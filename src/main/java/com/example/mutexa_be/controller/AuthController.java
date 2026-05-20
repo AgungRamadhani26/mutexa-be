@@ -68,4 +68,12 @@ public class AuthController {
          @RequestBody UpdateUserRequest request) {
       return ResponseUtil.ok(userService.updateUser(id, request), "Data user berhasil diperbarui.");
    }
+
+   /** Ganti password untuk user yang sedang login */
+   @PostMapping("/change-password")
+   public ResponseEntity<ApiResponse<Void>> changePassword(@RequestBody com.example.mutexa_be.dto.request.ChangePasswordRequest request) {
+      String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+      userService.changePassword(email, request);
+      return ResponseUtil.ok(null, "Password Anda berhasil diganti.");
+   }
 }
