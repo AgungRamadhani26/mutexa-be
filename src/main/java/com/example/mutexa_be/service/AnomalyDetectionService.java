@@ -488,11 +488,11 @@ public class AnomalyDetectionService {
                if (tx.getMutationType() == MutationType.DB) {
                   // DB = pembayaran ke lembaga lain (cicilan/angsuran)
                   appendAnomalyReason(tx,
-                        "Pembayaran ke Lembaga Keuangan (" + lembaga + ")");
+                        "Pembayaran Angsuran/Kewajiban ke Bank/Leasing (" + lembaga + ")");
                } else {
                   // CR = pencairan dana dari lembaga lain (pinjaman baru)
                   appendAnomalyReason(tx,
-                        "Pencairan dari Lembaga Keuangan (" + lembaga + ")");
+                        "Pencairan Pinjaman/Kredit dari Bank/Leasing (" + lembaga + ")");
                }
                // Break setelah match pertama agar tidak double-flag
                break;
