@@ -305,9 +305,7 @@ public class CategorizationService {
             tx.setCategory(result);
 
             // Update isExcluded flag sesuai kategori
-            tx.setIsExcluded(result == TransactionCategory.ADMIN ||
-                    result == TransactionCategory.TAX ||
-                    result == TransactionCategory.INTEREST);
+            tx.setIsExcluded(false);
 
             switch (result) {
                 case ADMIN -> countAdmin++;

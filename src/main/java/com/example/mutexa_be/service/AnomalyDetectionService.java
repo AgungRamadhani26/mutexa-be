@@ -710,7 +710,6 @@ public class AnomalyDetectionService {
     */
    private void appendAnomalyReason(BankTransaction tx, String newReason) {
       tx.setIsAnomaly(true);
-      tx.setIsExcluded(true);
 
       String existing = tx.getAnomalyReason();
       if (existing == null || existing.isBlank()) {
