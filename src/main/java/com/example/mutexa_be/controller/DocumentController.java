@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -23,6 +25,22 @@ public class DocumentController {
 
    private final DocumentService documentService;
 
+   private String getCurrentUserEmail() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
+         return auth.getName();
+      }
+      return null;
+   }
+
+   private boolean isAdmin() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      if (auth != null) {
+         return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+      }
+      return false;
+   }
+
    /**
     * Endpoint Level 1: Mengambil daftar Rekening Bank.
     * Tampilan awal (Level 1) di Frontend membutuhkan daftar rekening beserta
@@ -30,7 +48,9 @@ public class DocumentController {
     */
    @GetMapping("/by-account")
    public ResponseEntity<ApiResponse<List<AccountWithDocumentsResponse>>> getAccounts() {
-       List<AccountWithDocumentsResponse> accounts = documentService.getAccountsWithDocumentCount();
+       String email = getCurrentUserEmail();
+       boolean admin = isAdmin();
+       List<AccountWithDocumentsResponse> accounts = documentService.getAccountsWithDocumentCount(email, admin);
        return ResponseUtil.ok(accounts, "Berhasil mengambil daftar rekening bank");
    }
 
@@ -41,7 +61,9 @@ public class DocumentController {
     */
    @GetMapping("/by-account/{accountId}")
    public ResponseEntity<ApiResponse<List<DocumentListResponse>>> getDocumentsByAccount(@PathVariable Long accountId) {
-       List<DocumentListResponse> documents = documentService.getDocumentsByAccountId(accountId);
+       String email = getCurrentUserEmail();
+       boolean admin = isAdmin();
+       List<DocumentListResponse> documents = documentService.getDocumentsByAccountId(accountId, email, admin);
        return ResponseUtil.ok(documents, "Berhasil mengambil daftar dokumen");
    }
 
@@ -59,7 +81,9 @@ public class DocumentController {
          throw new IllegalArgumentException("Format file harus PDF, PNG, atau JPG.");
       }
 
-      MutationDocument savedDoc = documentService.uploadAndRegisterDocument(request);
+      String email = getCurrentUserEmail();
+      boolean admin = isAdmin();
+      MutationDocument savedDoc = documentService.uploadAndRegisterDocument(request, email, admin);
       DocumentUploadResponse responseDto = DocumentUploadResponse.fromEntity(savedDoc);
 
       return ResponseUtil.created(responseDto,

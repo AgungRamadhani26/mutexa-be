@@ -18,4 +18,12 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long> 
           "GROUP BY b.id, b.accountNumber, b.accountName, b.bankName " +
           "ORDER BY b.accountName ASC")
    List<com.example.mutexa_be.dto.response.AccountWithDocumentsResponse> getAccountsWithDocumentCount();
+
+   @Query("SELECT new com.example.mutexa_be.dto.response.AccountWithDocumentsResponse(" +
+          "b.id, b.accountNumber, b.accountName, b.bankName, COUNT(d.id)) " +
+          "FROM BankAccount b JOIN MutationDocument d ON d.bankAccount.id = b.id " +
+          "WHERE d.uploadedBy = :email " +
+          "GROUP BY b.id, b.accountNumber, b.accountName, b.bankName " +
+          "ORDER BY b.accountName ASC")
+   List<com.example.mutexa_be.dto.response.AccountWithDocumentsResponse> getAccountsWithDocumentCountByUploadedBy(String email);
 }

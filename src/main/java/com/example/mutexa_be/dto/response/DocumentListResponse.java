@@ -21,4 +21,7 @@ public class DocumentListResponse {
     private LocalDate periodStart;
     private LocalDate periodEnd;
     private LocalDateTime createdAt;
+    private String uploadedBy;
+    private Integer duplicateCount;
+    private Integer savedCount;
 }

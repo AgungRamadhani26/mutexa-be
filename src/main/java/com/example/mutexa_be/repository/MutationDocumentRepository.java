@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface MutationDocumentRepository extends JpaRepository<MutationDocument, Long> {
     List<MutationDocument> findAllByBankAccountIdOrderByCreatedAtDesc(Long bankAccountId);
+    List<MutationDocument> findAllByBankAccountIdAndUploadedByOrderByCreatedAtDesc(Long bankAccountId, String uploadedBy);
+    boolean existsByFileHash(String fileHash);
 }

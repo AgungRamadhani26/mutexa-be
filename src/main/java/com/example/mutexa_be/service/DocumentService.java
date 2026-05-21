@@ -1,6 +1,8 @@
 package com.example.mutexa_be.service;
 
 import com.example.mutexa_be.dto.request.UploadDocumentRequest;
+import com.example.mutexa_be.dto.response.AccountWithDocumentsResponse;
+import com.example.mutexa_be.dto.response.DocumentListResponse;
 import com.example.mutexa_be.entity.BankAccount;
 import com.example.mutexa_be.entity.BankTransaction;
 import com.example.mutexa_be.entity.MutationDocument;
@@ -9,20 +11,21 @@ import com.example.mutexa_be.entity.enums.DocumentType;
 import com.example.mutexa_be.repository.BankAccountRepository;
 import com.example.mutexa_be.repository.BankTransactionRepository;
 import com.example.mutexa_be.repository.MutationDocumentRepository;
+import com.example.mutexa_be.service.ParserRouterService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import com.example.mutexa_be.dto.response.AccountWithDocumentsResponse;
-import com.example.mutexa_be.dto.response.DocumentListResponse;
 
 /**
  * Service Utama (Orchestrator) untuk mengelola proses upload dan pemrosesan
@@ -74,8 +77,12 @@ public class DocumentService {
     *
     * @return List rekening dengan hitungan dokumen
     */
-   public List<AccountWithDocumentsResponse> getAccountsWithDocumentCount() {
-      return bankAccountRepository.getAccountsWithDocumentCount();
+   public List<AccountWithDocumentsResponse> getAccountsWithDocumentCount(String email, boolean isAdmin) {
+      if (isAdmin) {
+         return bankAccountRepository.getAccountsWithDocumentCount();
+      } else {
+         return bankAccountRepository.getAccountsWithDocumentCountByUploadedBy(email);
+      }
    }
 
    /**
@@ -85,8 +92,14 @@ public class DocumentService {
     * @param accountId ID rekening bank
     * @return List dokumen yang disortir berdasarkan waktu upload terbaru
     */
-   public List<DocumentListResponse> getDocumentsByAccountId(Long accountId) {
-      List<MutationDocument> docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
+   public List<DocumentListResponse> getDocumentsByAccountId(Long accountId, String email, boolean isAdmin) {
+      List<MutationDocument> docs;
+      if (isAdmin) {
+         docs = mutationDocumentRepository.findAllByBankAccountIdOrderByCreatedAtDesc(accountId);
+      } else {
+         docs = mutationDocumentRepository.findAllByBankAccountIdAndUploadedByOrderByCreatedAtDesc(accountId, email);
+      }
+
       return docs.stream().map(d -> DocumentListResponse.builder()
             .id(d.getId())
             .fileName(d.getFileName())
@@ -96,6 +109,9 @@ public class DocumentService {
             .periodStart(d.getPeriodStart())
             .periodEnd(d.getPeriodEnd())
             .createdAt(d.getCreatedAt())
+            .uploadedBy(d.getUploadedBy())
+            .duplicateCount(d.getDuplicateCount())
+            .savedCount(d.getSavedCount())
             .build()).collect(Collectors.toList());
    }
 
@@ -130,14 +146,31 @@ public class DocumentService {
     * @param request DTO berisi file, nomor rekening, nama bank, dll
     * @return Entity MutationDocument yang sudah tersimpan (status SUCCESS/FAILED)
     */
-   public MutationDocument uploadAndRegisterDocument(UploadDocumentRequest request) {
+   public MutationDocument uploadAndRegisterDocument(UploadDocumentRequest request, String email, boolean isAdmin) {
       MultipartFile file = request.getFile();
 
       if (file == null || file.isEmpty()) {
          throw new IllegalArgumentException("File upload tidak boleh kosong");
       }
 
-      // 1. Cari atau buat entitas Rekening Bank (Upsert)
+      String fileHash = null;
+      try {
+         MessageDigest md = MessageDigest.getInstance("MD5");
+         byte[] hashBytes = md.digest(file.getBytes());
+         StringBuilder sb = new StringBuilder();
+         for (byte b : hashBytes) {
+            sb.append(String.format("%02x", b));
+         }
+         fileHash = sb.toString();
+      } catch (Exception e) {
+         log.error("Gagal menghitung hash file", e);
+      }
+
+      if (fileHash != null && mutationDocumentRepository.existsByFileHash(fileHash)) {
+         throw new IllegalArgumentException("Fraud Terdeteksi: File/Mutasi ini sudah pernah diunggah ke dalam sistem sebelumnya.");
+      }
+
+      // 1. Cari atau buat entitas Rekening Bank (Upsert) - Tidak dilock lagi
       BankAccount account = findOrCreateAccount(request);
 
       try {
@@ -157,6 +190,8 @@ public class DocumentService {
                .filePath(filePath.toString())
                .periodStart(LocalDate.now())
                .periodEnd(LocalDate.now())
+               .uploadedBy(email)
+               .fileHash(fileHash)
                .build();
          document = mutationDocumentRepository.save(document);
 
@@ -186,7 +221,8 @@ public class DocumentService {
     */
    private BankAccount findOrCreateAccount(UploadDocumentRequest request) {
       String bankName = request.getBankName() != null ? request.getBankName().toUpperCase() : "";
-      return bankAccountRepository.findByAccountNumberAndBankName(request.getAccountNumber(), bankName)
+      
+      BankAccount account = bankAccountRepository.findByAccountNumberAndBankName(request.getAccountNumber(), bankName)
             .orElseGet(() -> {
                log.info("Rekening baru terdeteksi, menyimpan rekening: {}", request.getAccountNumber());
                return bankAccountRepository.save(BankAccount.builder()
@@ -195,6 +231,8 @@ public class DocumentService {
                      .bankName(request.getBankName().toUpperCase())
                      .build());
             });
+
+      return account;
    }
 
    /**
@@ -212,11 +250,17 @@ public class DocumentService {
          List<BankTransaction> txToSave = filterDuplicatesAndUpdatePeriod(extractedTxs, document);
 
          // Pipeline pemrosesan transaksi (masing-masing service punya SRP tersendiri)
-         categorizationService.enrichUnclassified(txToSave); // Step 1: Klasifikasi
-         anomalyDetectionService.detectAnomalies(txToSave); // Step 2: Deteksi anomali
-         bankTransactionRepository.saveAll(txToSave); // Step 3: Simpan
+         if (!txToSave.isEmpty()) {
+            categorizationService.enrichUnclassified(txToSave); // Step 1: Klasifikasi
+            anomalyDetectionService.detectAnomalies(txToSave); // Step 2: Deteksi anomali
+            bankTransactionRepository.saveAll(txToSave); // Step 3: Simpan
+         }
 
          document.setStatus(DocumentStatus.SUCCESS);
+         if (txToSave.isEmpty() && extractedTxs.size() > 0) {
+            document.setErrorMessage("Selesai (Perhatian: " + extractedTxs.size() + " transaksi yang ditemukan semuanya sudah pernah diunggah sebelumnya).");
+         }
+         
          mutationDocumentRepository.save(document);
 
          log.info("Parsing Selesai. Total transaksi disimpan: {}", txToSave.size());
@@ -271,6 +315,10 @@ public class DocumentService {
          document.setPeriodStart(minDate);
       if (maxDate != null)
          document.setPeriodEnd(maxDate);
+
+      // Simpan status duplikasi ke entity dokumen
+      document.setDuplicateCount(duplicateCount);
+      document.setSavedCount(txToSave.size());
 
       log.info("Filter duplikasi: {} disimpan, {} diabaikan", txToSave.size(), duplicateCount);
       return txToSave;
